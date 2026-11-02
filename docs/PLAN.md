@@ -10,7 +10,7 @@
 
 ## Global Constraints
 
-- Git author `Adwaith R Nair`, email `adwaith.r.nair189@gmail.com`, set in repo config. Commit messages carry no co-author or tool-attribution lines, enforced by a `commit-msg` hook.
+- Git author `Adwaith R Nair`, email `adwaith.r.nair189@gmail.com`, set in repo config. Commit messages are short and accurate, use conventional types (`feat:`, `fix:`, `docs:`, `test:`, `refactor:`, `perf:`, `build:`, `ci:`, `chore:`, `style:`), have a subject of 72 characters or fewer, and carry no co-author or tool-attribution lines. A `commit-msg` hook enforces this.
 - Docs state nothing about how the code was authored. Tooling config directories and files stay untracked.
 - GitHub repo `Adwaith-R-Nair/sandeha`, public. Push at the end of every phase.
 - Never commit datasets or checkpoints. Weights go in a GitHub Release.
