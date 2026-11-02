@@ -50,6 +50,7 @@ See `DECISIONS.md`: B2 (anchored `.gitignore`), B3 (local tooling excludes), B5 
 
 ### Open items
 
+- **Not done: private GitHub repo and first push.** `gh repo create Adwaith-R-Nair/sandeha --private --source=. --remote=origin --push` was refused by a permission check on the build machine before it ran, and the push was not retried another way. The work exists only in the local repo until the owner runs that command or allows it. The end-of-phase push rule is unmet until then.
 - `docs/DESIGN.md` still reads "Status: Awaiting owner approval". The owner has since approved the build, and the status line was left for the owner to change.
 - The design asks for a reboot before the overnight run, because one desktop process still had old driver files loaded. This task did not reboot. The GPU test passed without one.
 
