@@ -100,6 +100,71 @@ def test_test_b_only_uses_unseen_shapes(monkeypatch):
     assert families_drawn(monkeypatch, "test_b") == set(UNSEEN_SHAPES)
 
 
+def families_placed(monkeypatch, split, count):
+    """The family of each obstacle in the returned scenes, leaving out rejected attempts."""
+    drawn = []
+    placed = []
+
+    def spy(name, builder):
+        def wrapped(*args, **kwargs):
+            drawn.append(name)
+            return builder(*args, **kwargs)
+
+        return wrapped
+
+    real_place, real_way_up = scenes._place_shape, scenes._has_way_up
+    this_attempt = []
+
+    def count_place(*args, **kwargs):
+        shape = real_place(*args, **kwargs)
+        this_attempt.append(drawn[-1])
+        return shape
+
+    def count_way_up(solid, inflow):
+        is_open = real_way_up(solid, inflow)
+        if is_open:
+            placed.extend(this_attempt)
+        this_attempt.clear()
+        return is_open
+
+    spies = {name: spy(name, builder) for name, builder in scenes._BUILDERS.items()}
+    monkeypatch.setattr(scenes, "_BUILDERS", spies)
+    monkeypatch.setattr(scenes, "_place_shape", count_place)
+    monkeypatch.setattr(scenes, "_has_way_up", count_way_up)
+    sample_many(split, count)
+    return placed
+
+
+@pytest.mark.parametrize("split", SPLITS)
+def test_placed_families_are_equally_likely(monkeypatch, split):
+    """A family that is hard to fit must not end up rarer because its poses get rejected."""
+    placed = families_placed(monkeypatch, split, 1000)
+    allowed = UNSEEN_SHAPES if split == "test_b" else TRAIN_SHAPES
+    limit = 4 * np.sqrt(1 / 3 * 2 / 3 / len(placed))
+    for name in allowed:
+        assert abs(placed.count(name) / len(placed) - 1 / 3) < limit
+
+
+def test_a_family_is_kept_when_its_first_pose_is_rejected(monkeypatch):
+    """Direct check of the rule: all attempts for one placement use one family."""
+    calls = []
+    real = scenes._BUILDERS["wall"]
+
+    def builder(name):
+        def wrapped(rng, x, y):
+            calls.append(name)
+            return np.ones_like(x, dtype=bool) if len(calls) < 4 else real(rng, x, y)
+
+        return wrapped
+
+    monkeypatch.setattr(scenes, "_BUILDERS", {name: builder(name) for name in TRAIN_SHAPES})
+    x, y = scenes._grid(64)
+    keep_out = x < 0.02  # A shape covering the whole box is always rejected.
+    scenes._place_shape(np.random.default_rng(0), TRAIN_SHAPES, x, y, keep_out)
+    assert len(calls) >= 4
+    assert len(set(calls)) == 1
+
+
 def test_families_do_not_overlap():
     assert not set(TRAIN_SHAPES) & set(UNSEEN_SHAPES)
     assert set(scenes._BUILDERS) == set(TRAIN_SHAPES) | set(UNSEEN_SHAPES)
@@ -164,11 +229,26 @@ def test_test_c_outside_train_ranges():
         assert any(within(strength, side) for side in TEST_C_INFLOW)
 
 
-def test_test_c_covers_both_sides_of_both_ranges_in_every_pairing():
-    pairs = set()
-    for scene in sample_many("test_c"):
-        pairs.add((scene.buoyancy > TRAIN_BUOYANCY[1], float(scene.inflow.max()) > TRAIN_INFLOW[1]))
-    assert len(pairs) == 4
+def test_test_c_pairs_low_with_low_and_high_with_high():
+    """Low buoyancy with high inflow, or the reverse, is a training flow: see the solver test below."""
+    count = 1000
+    pairs = [
+        (scene.buoyancy > TRAIN_BUOYANCY[1], float(scene.inflow.max()) > TRAIN_INFLOW[1])
+        for scene in sample_many("test_c", count=count)
+    ]
+    assert set(pairs) == {(False, False), (True, True)}
+    high_share = np.mean([high for high, _ in pairs])
+    assert abs(high_share - 0.5) < 4 * np.sqrt(0.25 / count)
+
+
+def test_test_c_flow_parameter_is_outside_the_train_range():
+    """The flow depends on buoyancy times strength, so that product must leave the range too."""
+    bottom = TRAIN_BUOYANCY[0] * TRAIN_INFLOW[0]
+    top = TRAIN_BUOYANCY[1] * TRAIN_INFLOW[1]
+    assert TEST_C_BUOYANCY[0][1] * TEST_C_INFLOW[0][1] < bottom
+    assert TEST_C_BUOYANCY[1][0] * TEST_C_INFLOW[1][0] > top
+    for scene in sample_many("test_c", count=500):
+        assert not within(scene.buoyancy * float(scene.inflow.max()), (bottom, top))
 
 
 @pytest.mark.parametrize("split", ["train", "test_c"])
@@ -256,13 +336,21 @@ def test_a_scene_starts_with_one_to_three_obstacles(monkeypatch, split):
 
 
 @pytest.mark.parametrize("split", SPLITS)
-def test_most_scenes_put_an_obstacle_in_a_plume_path(split):
+def test_every_scene_puts_an_obstacle_above_a_source(split):
     """A plume that misses every shape makes a scene easy, whichever family the shapes are."""
-    hits = []
-    for scene in sample_many(split):
+    for scene in sample_many(split, count=200, res=256):
         columns = (scene.inflow > 0).any(axis=0)
-        hits.append(scene.obstacle[:, columns].any())
-    assert np.mean(hits) > 0.85
+        assert scene.obstacle[:, columns].any()
+
+
+def test_in_path_reach_cannot_miss_a_source():
+    """Why the test above holds for every draw, not just for those it sees.
+
+    The narrowest case is the smallest source under an upright wall of the minimum thickness.
+    The margin is at least 2 columns at 256x256.
+    """
+    narrowest = scenes._SOURCE_RADIUS[0] + 0.5 * MIN_THICKNESS
+    assert narrowest - scenes._IN_PATH_REACH >= 2 / 256
 
 
 @pytest.mark.parametrize("split", SPLITS)
@@ -511,3 +599,37 @@ def test_scenes_run_through_the_solver(split):
     assert state.density.isfinite().all() and state.velocity.isfinite().all()
     assert state.density[ever].abs().max() == 0
     assert (state.density.sum(dim=(1, 2, 3)) > 0).all()
+
+
+def run_flow(scene, buoyancy, strength, res, steps):
+    device = torch.device("cuda")
+    state = SmokeState(
+        velocity=torch.zeros(1, 2, res, res, device=device),
+        density=torch.zeros(1, 1, res, res, device=device),
+    )
+    obstacle = torch.from_numpy(scene.obstacle)[None, None].to(device)
+    inflow = torch.from_numpy(scene.inflow / scene.inflow.max() * strength)[None, None].to(device)
+    lift = torch.tensor([buoyancy], dtype=torch.float32, device=device)
+    solver = SmokeSolver(res, device, dt=0.01)
+    for _ in range(steps):
+        state = solver.step(state, obstacle, inflow, lift)
+    return state
+
+
+def test_flow_depends_only_on_buoyancy_times_strength():
+    """Density is linear in strength, so only the product reaches the velocity.
+
+    This is why test_c can't pair low buoyancy with high strength: docs/DECISIONS.md B20.
+    """
+    res = 64
+    scene = sample_scene(np.random.default_rng(5), res, "train")
+    base = run_flow(scene, 1.8, 3.0, res, 100)
+    same = run_flow(scene, 0.6, 9.0, res, 100)
+    other = run_flow(scene, 2.0, 5.0, res, 100)
+
+    def relative(a, b):
+        return float((a - b).norm() / b.norm())
+
+    assert relative(same.velocity, base.velocity) < 1e-5
+    assert relative(same.density / 3.0, base.density) < 1e-5
+    assert relative(other.velocity, base.velocity) > 0.1

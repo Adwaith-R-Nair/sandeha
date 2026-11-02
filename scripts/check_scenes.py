@@ -1,7 +1,8 @@
 """Measure the scene sampler, and run a few scenes through the solver for one full length.
 
-Answers three questions before data is generated: do the shape families cover similar areas,
-do the fastest flows stay clear of jumping the thinnest wall, and does smoke reach the obstacles.
+Answers four questions before data is generated: do the shape families cover similar areas and
+turn up equally often, do the fastest flows stay clear of jumping the thinnest wall, does smoke
+reach the obstacles, and does the flow really depend only on buoyancy times inflow strength.
 Writes results/scene_check.json, results/figures/scene_check.png and scene_check_flow.png.
 Usage: uv run python scripts/check_scenes.py
 """
@@ -88,7 +89,97 @@ def measure_splits():
             "late_share": float(np.mean([s.late_obstacle is not None for s in batch])),
             "buoyancy": spread([s.buoyancy for s in batch]),
             "inflow_strength": spread([float(s.inflow.max()) for s in batch]),
+            "buoyancy_times_strength": spread([s.buoyancy * float(s.inflow.max()) for s in batch]),
+            "share_with_an_obstacle_above_a_source": float(
+                np.mean([s.obstacle[:, (s.inflow > 0).any(axis=0)].any() for s in batch])
+            ),
         }
+    return result
+
+
+def measure_family_shares():
+    """How often each family ends up placed, over shapes in the scenes that were kept."""
+    real_builders, real_place, real_way_up = scenes._BUILDERS, scenes._place_shape, scenes._has_way_up
+    drawn = []
+    attempt = []
+    placed = []
+
+    def spy(name, builder):
+        def wrapped(*args, **kwargs):
+            drawn.append(name)
+            return builder(*args, **kwargs)
+
+        return wrapped
+
+    def place(*args, **kwargs):
+        shape = real_place(*args, **kwargs)
+        attempt.append(drawn[-1])
+        return shape
+
+    def way_up(solid, inflow):
+        is_open = real_way_up(solid, inflow)
+        if is_open:
+            placed.extend(attempt)
+        attempt.clear()
+        return is_open
+
+    result = {}
+    scenes._BUILDERS = {name: spy(name, builder) for name, builder in real_builders.items()}
+    scenes._place_shape, scenes._has_way_up = place, way_up
+    try:
+        for index, split in enumerate(SPLITS):
+            placed.clear()
+            rng = np.random.default_rng([SEED, 300 + index])
+            for _ in range(STATS_SCENES):
+                sample_scene(rng, RES, split)
+            names = sorted(set(placed))
+            result[split] = {
+                "placed": len(placed),
+                "shares": {name: placed.count(name) / len(placed) for name in names},
+            }
+    finally:
+        scenes._BUILDERS, scenes._place_shape, scenes._has_way_up = real_builders, real_place, real_way_up
+    return result
+
+
+def measure_flow_parameter():
+    """Same geometry and the same product against a different product, from one training scene."""
+
+    def run(scene, res, steps, buoyancy, strength):
+        state = SmokeState(
+            velocity=torch.zeros(1, 2, res, res, device=DEVICE),
+            density=torch.zeros(1, 1, res, res, device=DEVICE),
+        )
+        obstacle = torch.from_numpy(scene.obstacle)[None, None].to(DEVICE)
+        inflow = torch.from_numpy(scene.inflow / scene.inflow.max() * strength)[None, None].to(DEVICE)
+        lift = torch.tensor([buoyancy], dtype=torch.float32, device=DEVICE)
+        solver = SmokeSolver(res, DEVICE, DT)
+        for _ in range(steps):
+            state = solver.step(state, obstacle, inflow, lift)
+        return state
+
+    def relative(a, b):
+        return float((a - b).norm() / b.norm())
+
+    result = []
+    for res, steps in ((64, 200), (256, 240)):
+        scene = sample_scene(np.random.default_rng([SEED, 400]), res, "train")
+        base = run(scene, res, steps, 1.8, 3.0)
+        same = run(scene, res, steps, 0.6, 9.0)
+        other = run(scene, res, steps, 2.0, 5.0)
+        result.append(
+            {
+                "res": res,
+                "steps": steps,
+                "base_buoyancy_strength": [1.8, 3.0],
+                "same_product_buoyancy_strength": [0.6, 9.0],
+                "other_product_buoyancy_strength": [2.0, 5.0],
+                "same_product_velocity_difference": relative(same.velocity, base.velocity),
+                "same_product_density_difference_after_rescaling": relative(same.density / 3.0, base.density),
+                "other_product_velocity_difference": relative(other.velocity, base.velocity),
+                "other_product_density_difference": relative(other.density, base.density),
+            }
+        )
     return result
 
 
@@ -170,6 +261,16 @@ def group_scenes():
         rng = np.random.default_rng([SEED, 100 + index])
         return [sample_scene(rng, RES, split) for _ in range(BATCH)]
 
+    def draw_side(high, index):
+        """Scenes from one side of test_c, with the physics the sampler really gives them."""
+        rng = np.random.default_rng([SEED, 100 + index])
+        kept = []
+        while len(kept) < BATCH:
+            scene = sample_scene(rng, RES, "test_c")
+            if (scene.buoyancy > TRAIN_BUOYANCY[1]) == high:
+                kept.append(scene)
+        return kept
+
     low = (TEST_C_BUOYANCY[0][0], TEST_C_INFLOW[0][0])
     high = (TEST_C_BUOYANCY[1][1], TEST_C_INFLOW[1][1])
     return {
@@ -180,6 +281,8 @@ def group_scenes():
         ],
         "test_c_low_corner": [with_physics(s, *low) for s in draw("test_c", 3)],
         "test_c_high_corner": [with_physics(s, *high) for s in draw("test_c", 4)],
+        "test_c_low_side": draw_side(False, 5),
+        "test_c_high_side": draw_side(True, 6),
     }
 
 
@@ -261,6 +364,8 @@ def main():
             "min_thickness": MIN_THICKNESS,
         },
         "family_area_fraction": measure_family_areas(),
+        "family_placed_shares": measure_family_shares(),
+        "flow_parameter": measure_flow_parameter(),
         "splits": measure_splits(),
         "runs": runs,
         "peak_gpu_memory_mib": torch.cuda.max_memory_allocated(DEVICE) / 2**20,
@@ -271,7 +376,7 @@ def main():
 
     output = ROOT / "results" / "scene_check.json"
     output.write_text(json.dumps(result, indent=2) + "\n")
-    print(json.dumps({k: result[k] for k in ("family_area_fraction", "splits")}, indent=2))
+    print(json.dumps({k: result[k] for k in ("family_area_fraction", "family_placed_shares", "flow_parameter", "splits")}, indent=2))
 
 
 if __name__ == "__main__":

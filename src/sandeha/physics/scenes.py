@@ -10,10 +10,16 @@ What separates the splits:
   third of scenes have an obstacle that appears mid-run.
 - ``test_b``: unseen shape families, with physics inside the training ranges. Only the
   geometry is unfamiliar.
-- ``test_c``: simple shapes, with buoyancy and inflow strength both outside the training
-  ranges, on either side. Only the physics is unfamiliar.
+- ``test_c``: simple shapes, with buoyancy and inflow strength both low or both high. Only the
+  physics is unfamiliar.
 
 ``test_b`` and ``test_c`` have no late obstacles, so that each changes one thing.
+
+The flow depends on buoyancy and strength only through their product. Scaling the density by
+``1/strength`` makes the equations depend on ``buoyancy * strength`` alone, so low buoyancy with
+high strength can be a training flow with its density rescaled. That is why ``test_c`` ties the
+two sides together, which puts the product outside the training range as well. Input amplitudes
+leave their ranges together with the flow, so ``test_c`` can't separate those two causes.
 """
 
 from collections.abc import Callable
@@ -28,7 +34,7 @@ SPLITS = ("train", "val", "test_a", "test_b", "test_c")
 # Gaps between the training ranges and test_c, so that test_c is outside by a clear margin.
 TRAIN_BUOYANCY = (1.0, 3.0)
 TRAIN_INFLOW = (3.0, 7.0)  # Peak rate of a source.
-TEST_C_BUOYANCY = ((0.4, 0.8), (3.5, 4.5))
+TEST_C_BUOYANCY = ((0.4, 0.8), (3.5, 4.5))  # Index 0 is the low side, used with low inflow.
 TEST_C_INFLOW = ((1.5, 2.5), (8.0, 10.0))
 
 # No solid part is thinner than this. Semi-Lagrangian advection can carry smoke across a wall
@@ -41,7 +47,9 @@ LATE_FRAMES = (20, 90)  # Inclusive. Frames are neural steps of the planned 121-
 _OBSTACLE_COUNT = (1, 3)  # Inclusive.
 _OBSTACLE_X = (0.15, 0.85)
 _OBSTACLE_Y = (0.3, 0.85)  # Centres. Above the sources.
-_IN_PATH_REACH = 0.08  # The first obstacle's centre is this close to a source, along x.
+# The first obstacle's centre is this close to a source, along x. Less than the smallest source
+# radius plus half the minimum thickness, so that no shape can miss the source's columns.
+_IN_PATH_REACH = 0.06
 _SOURCE_COUNT = (1, 2)  # Inclusive.
 _SOURCE_X = (0.12, 0.88)
 _SOURCE_Y = (0.08, 0.16)
@@ -215,9 +223,12 @@ def _place_shape(
     existing: np.ndarray | None = None,
     x_range: tuple[float, float] = _OBSTACLE_X,
 ) -> np.ndarray:
-    """A random shape clear of ``keep_out``, and mostly new if ``existing`` is given."""
+    """A random shape clear of ``keep_out``, and mostly new if ``existing`` is given.
+
+    The family is drawn once, so that families which are hard to fit don't become rarer.
+    """
+    family = families[int(rng.integers(len(families)))]
     for _ in range(_POSE_ATTEMPTS):
-        family = families[int(rng.integers(len(families)))]
         cx, cy = rng.uniform(*x_range), rng.uniform(*_OBSTACLE_Y)
         shape = _BUILDERS[family](rng, x - cx, y - cy)
         if not shape.any() or (shape & keep_out).any():
@@ -225,7 +236,7 @@ def _place_shape(
         if existing is not None and (shape & ~existing).sum() < 0.5 * shape.sum():
             continue
         return shape
-    raise RuntimeError(f"no clear place found for any of {families}")
+    raise RuntimeError(f"no clear place found for a {family}")
 
 
 def _has_way_up(solid: np.ndarray, inflow: np.ndarray) -> bool:
@@ -252,12 +263,11 @@ def _box_margin(x: np.ndarray, y: np.ndarray) -> np.ndarray:
 
 
 def _sample_physics(rng: np.random.Generator, split: str) -> tuple[float, float]:
-    """Buoyancy and inflow strength. In test_c, each independently falls low or high."""
+    """Buoyancy and inflow strength. In test_c, both are low or both are high."""
     if split != "test_c":
         return float(rng.uniform(*TRAIN_BUOYANCY)), float(rng.uniform(*TRAIN_INFLOW))
-    buoyancy = TEST_C_BUOYANCY[int(rng.integers(2))]
-    strength = TEST_C_INFLOW[int(rng.integers(2))]
-    return float(rng.uniform(*buoyancy)), float(rng.uniform(*strength))
+    side = int(rng.integers(2))
+    return float(rng.uniform(*TEST_C_BUOYANCY[side])), float(rng.uniform(*TEST_C_INFLOW[side]))
 
 
 def sample_scene(rng: np.random.Generator, res: int, split: str) -> Scene:
