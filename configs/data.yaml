@@ -1,0 +1,15 @@
+# The planned dataset (docs/PLAN.md, Task 4). Generation records this file in data/manifest.json.
+seed: 20261104
+res: 256 # Reference grid.
+coarse_res: 128 # Neural grid. Must divide res.
+dt: 0.01
+steps_per_frame: 4
+frames: 121
+batch_size: 16
+fine_frames: [20] # Frames also kept at the reference grid. 20 is the primary window's start.
+scenes:
+  train: 240
+  val: 30
+  test_a: 30
+  test_b: 30
+  test_c: 30

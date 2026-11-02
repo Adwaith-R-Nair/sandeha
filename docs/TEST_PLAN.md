@@ -78,6 +78,21 @@ Scene checks, in `tests/physics/test_scenes.py`:
 
 `uv run python scripts/check_scenes.py` runs 56 scenes for a full 480 solver steps, measures family shares and the flow parameter, and renders `results/figures/scene_check.png` and `scene_check_flow.png`, which are inspected by eye.
 
+Data checks, in `tests/data/`, on tiny datasets: 64×64 reference grid and a few frames, and 256×256 for shapes only.
+
+| Test | What it establishes |
+|---|---|
+| `test_open_split_refuses_test_without_final_eval`, `test_lock_is_checked_before_the_files_are_touched`, `test_final_eval_opens_a_test_split`, `test_train_and_val_open_without_final_eval` | The lock, and that it comes before any read |
+| `test_manifest_detects_tampering`, `test_a_missing_file_counts_as_tampering`, `test_other_splits_still_open_when_one_is_tampered`, `test_no_manifest_means_no_data` | One flipped bit in a split's file fails its checksum, and no manifest means no data |
+| `test_no_scene_shared_between_splits`, `test_seeds_are_disjoint_at_the_planned_size`, `test_a_scene_seed_does_not_depend_on_split_sizes`, `test_scene_uses_its_own_seed` | Seeds and scene content are disjoint. Resizing one split rerolls no other |
+| `test_resume_generation`, `test_killed_process_resumes_to_the_same_bytes`, `test_resume_does_not_redo_finished_scenes`, `test_resume_ignores_a_torn_temporary_file` | Interrupted at a boundary, inside a batch, or by a real SIGKILL across processes, a run ends with the same checksums as an uninterrupted one. This also exercises determinism across processes, an open item from Task 2 |
+| `test_resume_refuses_a_changed_config`, `test_resume_refuses_a_changed_commit`, `test_finished_data_is_never_regenerated`, `test_dirty_tree_is_refused_unless_allowed` | The set can't change silently |
+| `test_fields_match_a_direct_solver_run` | Stored frames match a separate solver loop to the byte, which pins down late-obstacle timing, downsampling and solid clearing |
+| `test_every_target_is_clear_of_the_mask_in_its_input`, `test_late_obstacle_changes_the_mask_at_its_frame`, `test_obstacle_seq_follows_a_late_obstacle` | Masks and targets agree through a late obstacle |
+| `test_non_finite_state_stops_the_run_and_stores_nothing`, `test_float16_overflow_stops_the_run`, `test_unconverged_solves_are_recorded`, `test_manifest_records_solver_health`, `test_manifest_records_how_float16_compares_with_the_change_per_frame` | A bad state never reaches the store, and solver health and rounding are on record |
+| `test_normalizer_uses_train_only`, `test_normalizer_refuses_to_fit_on_any_other_split`, `test_fit_matches_the_saved_normalizer`, `test_a_constant_channel_is_refused` | Stats match a separate calculation on train, and differ from another split's |
+| `test_item_shapes`, `test_item_channels_are_in_the_planned_order`, `test_targets_are_the_following_frames`, `test_every_window_is_there_once`, `test_make_input_rebuilds_an_item_input` | Items at the planned 128×128 grid, in the planned channel order |
+
 ## Training (Task 5)
 
 Model output shapes, solid cells forced to zero, zero divergence for uniform flow, overfitting one batch by at least 10×, atomic checkpoints under interruption, resume restoring optimiser and RNG state, and peak GPU memory below 5.5 GB for U-Net at batch 16.

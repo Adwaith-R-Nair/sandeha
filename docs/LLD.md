@@ -1,6 +1,6 @@
 # Sandeha: Low-Level Design
 
-**Status:** interfaces as planned in `docs/PLAN.md`. Built so far: `scripts/long_job.sh`, the package skeleton and the reference solver. Each section is updated to match the code when its component is built.
+**Status:** interfaces as planned in `docs/PLAN.md`. Built so far: `scripts/long_job.sh`, the package skeleton, the reference solver, scenes and the data layer. Each section is updated to match the code when its component is built.
 
 ## Conventions
 
@@ -106,21 +106,62 @@ Rules that hold in every split:
 
 `uv run python scripts/check_scenes.py` writes `results/scene_check.json` and two figures. See `DECISIONS.md` B17 to B21.
 
-## Data
+## Data (built)
 
 ```python
 def open_split(root: Path, split: str, final_eval: bool = False) -> SplitStore: ...
 
+class SplitStore:
+    fields: np.memmap                  # float16, read-only, (scene, frame, 3, 128, 128): u, v, density
+    n_scenes: int; n_frames: int; split: str
+    def scene(self, i) -> Scene: ...           # at the neural grid
+    def fine_scene(self, i) -> Scene: ...      # at the reference grid, as sampled
+    def obstacle(self, i, frame) -> ndarray: ... # bool (H,W), the solid in force from frame to frame+1
+    def inflow(self, i) -> ndarray: ...
+    def buoyancy(self, i) -> float: ...
+    def fine_state(self, i, frame) -> SmokeState: ...  # KeyError unless the frame was stored
+
 class Normalizer:   # fitted on train only, saved in data/normalizer.json
-    def encode(self, x: Tensor) -> Tensor: ...
-    def decode(self, x: Tensor) -> Tensor: ...
+    def encode(self, x) -> Tensor: ...         # fields (...,3,H,W), by mean and std per channel
+    def decode(self, x) -> Tensor: ...
+    def encode_delta(self, x) -> Tensor: ...   # change over one step, by its RMS per channel
+    def decode_delta(self, x) -> Tensor: ...
+    def make_input(self, fields, obstacle, inflow, buoyancy) -> Tensor: ...  # (...,6,H,W)
+def fit_normalizer(store) -> Normalizer: ...   # ValueError on any split but train
 
 class StepDataset(Dataset):
     def __init__(self, store, normalizer, unroll: int = 1): ...
-    # item: input (6,128,128), target_seq (unroll,3,128,128), obstacle, inflow, buoyancy
+    # item: input (6,H,W), target_seq (unroll,3,H,W), obstacle (1,H,W), obstacle_seq (unroll,1,H,W),
+    #       inflow (1,H,W), buoyancy (), scene, frame
+
+def generate(config, root, *, allow_dirty=False, on_scene=None, log=print) -> dict: ...  # the manifest
 ```
 
-`SplitStore.fields` is a `float16` memmap of `(scene, frame, 3, 128, 128)`. Writes are atomic per scene. `data/manifest.json` records seeds, config, git commit and the SHA-256 of each split. `open_split` raises `PermissionError` on a test split unless `final_eval=True`, and fails on a checksum mismatch.
+Files under `data/`, none tracked:
+
+| File | Contents |
+|---|---|
+| `manifest.json` | Seeds, config, commit, SHA-256 of each file and each split, realised late obstacles and `test_c` sides, solver health, rounding, timing. Written last: with no manifest, no split opens. A copy goes to `results/data_manifest.json`, which is tracked |
+| `normalizer.json` | The normaliser, and its checksum in the manifest |
+| `generation.json` | The config and commit a run started with. Guards resuming |
+| `timing.jsonl` | Seconds per batch, across restarts. Not checksummed |
+| `<split>/fields.npy` | `float16`, for the memmap |
+| `<split>/statics.npz` | Per scene: coarse and fine `obstacle`, `late_obstacle` and `inflow`, plus `buoyancy`, `late_frame` (-1 if none) and `seed` |
+| `<split>/fine.npz` | Reference-grid float32 states at `fine_frames`. Cell-centred, so a solver started from one projects first |
+| `<split>/scenes/` | One file per finished scene, during generation only |
+
+| Rule | Detail |
+|---|---|
+| Timing of a late obstacle | The solid in force from frame `f` to `f+1` is `obstacle(i, f)`, which includes the late obstacle once `f >= late_frame`. So frame `late_frame` is the last made under the old solid, and may hold smoke inside the new one, as when a person draws over smoke (`DECISIONS.md` B23) |
+| Solid cells | A stored frame is zero in the solid in force on the way into it. So every target is zero under the mask in its input, which is what `apply_step` forces |
+| Coarse grid | Fields and inflow are 2×2 averages. A coarse cell is solid if any of its fine cells is (B24) |
+| Normaliser | Fluid cells of train only. `inflow_scale` is train's largest inflow, so zero stays zero. `delta_std` is around zero, not the mean. Obstacle isn't scaled |
+| Lock | `open_split` checks the lock before it touches any file, and then every checksum. It takes seconds on the largest split |
+| Resuming | Scene seeds depend only on the master seed, split and index. Batches are fixed index ranges, and a part-finished batch reruns whole, so a resumed run does the same arithmetic. Byte-identical result, tested with a real SIGKILL. **Same config and commit required: commit nothing between stopping a run and resuming it** |
+| Stops | Non-finite data as stored, which covers `float16` overflow, stops the run with nothing from that batch stored. A dirty working tree stops it before anything starts, unless `--allow-dirty`, which the manifest records. Unconverged solves don't stop it, and are counted in the manifest for the spot-check |
+| Finished data | Never regenerated. Replacing a locked set means deleting `data/` by hand |
+
+`uv run python scripts/estimate_generation.py` measures a small sample with a different master seed, and writes `results/generation_estimate.json`.
 
 ## Models and training
 

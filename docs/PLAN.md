@@ -35,12 +35,13 @@
 
 ```
 configs/                 data.yaml  train_unet.yaml  train_fno.yaml  eval.yaml  well.yaml
-scripts/                 long_job.sh  check_solver.py  generate_data.py  train.py  select_arch.py  run_experiments.py
+scripts/                 long_job.sh  check_solver.py  generate_data.py  estimate_generation.py  train.py  select_arch.py  run_experiments.py
                          make_figures.py  render_results.py  train_well.py  eval_well.py  run_demo.py  bench_demo.py
 src/sandeha/
   physics/solver.py      SmokeSolver, SmokeState
   physics/scenes.py      Scene, sample_scene, shape families
   data/store.py          on-disk format, split guard
+  data/generate.py       generation, resuming, manifest
   data/dataset.py        StepDataset, Normalizer
   models/unet.py         UNet
   models/fno.py          FNO2d

@@ -179,3 +179,56 @@ Each major decision, the alternatives and the reason. Status is **Default** for 
 - **Alternative:** keep the redraw and record the skew.
 - **Reason:** redrawing on each rejected pose favoured families that fit easily, and made walls, the smallest and most directional family, the rarest. The skew served no purpose and no document stated it.
 - **Cost:** a family that fits poorly could exhaust its 200 attempts and raise an error, where before another family could have taken its place. In a one-off run at the edge of the placement range, the lowest acceptance was 0.2175, for walls. That gives a chance of about `5e-22` of exhausting the attempts. Over 13000 scenes, no error occurred.
+
+### B23: A late obstacle applies from its frame onward, on the step out of that frame (2026-11-03)
+
+- **Decision:** the solid in force from frame `f` to `f+1` includes the late obstacle once `f >= late_frame`. Frame `late_frame` is therefore made under the old solid and is zero only there, and it may hold smoke inside the new solid. The mask in the model's input at that frame is the new one.
+- **Alternatives:** apply the obstacle on the way into `late_frame`, so that frame is already clean. The mask in the input one frame earlier would then not show the obstacle, and the target would change for a reason the model can't see. Or clear smoke from the new solid in the stored frame, so that training never sees smoke under a mask.
+- **Reason:** this is what the demo and `HybridSimulator.set_obstacle` do when a person draws over smoke: the input has the new mask and the old smoke. It keeps one rule for every transition: a target is zero under the mask in its input, which is what `apply_step` forces. A test compares stored frames with a separate solver loop to the byte.
+
+### B24: A coarse cell is solid if any of its fine cells is (2026-11-03)
+
+- **Decision:** the 128×128 mask is the any-of-four of the 256×256 mask. Fields are 2×2 averages, then zeroed in coarse solid cells. Inflow is a 2×2 average, so its coarse peak can be a little below the scene's strength.
+- **Alternatives:** a cell is solid only if most or all of its fine cells are. The averages in partly solid fluid cells would then mix in zeros, and a fluid cell could hold values from next to a wall.
+- **Reason:** coarse fluid cells then hold only fluid values, and no wall opens up at the coarse grid. The cost is that solids grow by up to half a coarse cell per side, in the mask only. Fine masks and inflow are kept as well, so that Task 8's hand-off can use the true solid.
+
+### B25: `dt=0.01` for generation (2026-11-03)
+
+- **Decision:** the value all solver and scene checks used.
+- **Alternatives:** a larger `dt` for less work, or a smaller one for a margin.
+- **Reason:** those checks measured a largest travel of 7.32 cells per step against the 10.24-cell thinnest wall, or about `dt=0.014` before the two meet. A larger value gives up that margin, and a smaller one multiplies the cost and invalidates the checks. That travel came from eight scenes per group, so it isn't a bound. Each scene's largest travel is now recorded in the manifest.
+
+### B26: What stops a generation run, and what is only recorded (2026-11-03)
+
+- **Decision:** non-finite data as stored stops the run, with nothing from that batch stored. A dirty tree stops it before it starts. An unconverged solve is counted in the manifest and doesn't stop it.
+- **Alternatives:** redraw a bad scene, which would drop hard scenes from the set without any record. Or stop on any unconverged solve, which could end an overnight run over one solve at the rounding limit.
+- **Reason:** a bad scene must be looked at, not replaced. The check is made on the `float16` form, since a value too large for it only turns infinite on storing. The Task 3 check groups had no unconverged solves. The spot-check has to confirm the count.
+
+### B27: Additions to the planned data interface (2026-11-03)
+
+- **Decision:**
+  - `src/sandeha/data/generate.py` holds generation, so that tests can import it, and `scripts/generate_data.py` is a thin command.
+  - `Normalizer` also has `encode_delta`, `decode_delta` and `make_input`, with a separate scale for the change over one step.
+  - Items also have `obstacle_seq`, `scene` and `frame`.
+  - `SplitStore` also has `fine_scene`, and `configs/data.yaml` stores reference-grid states at frame 20.
+  - `results/data_manifest.json` is a tracked copy of the manifest. `scripts/estimate_generation.py` and `results/generation_estimate.json` are new. `pyyaml` is a new dependency, for the planned YAML config.
+- **Alternatives:** one scale for fields and changes. Or unroll windows that skip over a late obstacle.
+- **Reason:** the plan asks for a normalised delta, and one step's change is much smaller than a field's spread, so one scale would give very small targets. Without `obstacle_seq`, an unroll crossing a late obstacle would use a stale mask, and skipping those windows would hide the event from training. `data/` isn't tracked, so without the copy the checksums of the locked sets wouldn't be on record. Regenerating for frame 20 states later would replace the locked sets, and storing them is cheap by comparison.
+
+### B28: Seeds per scene, fixed batches, and resuming only on the same commit (2026-11-03)
+
+- **Decision:** a scene's seed comes from the master seed, split and index only. Batches are fixed index ranges, and a part-finished batch reruns whole. Resuming needs the same config and commit, and finished data is never regenerated.
+- **Alternatives:** one stream per split, which rerolls scenes when a split is resized. Or rerun only the missing scenes in a smaller batch.
+- **Reason:** the plan allows scaling sizes down, and that mustn't reroll the test sets. `test_batch_matches_single_runs` shows batched items agree with single runs within `1e-4`, not to the byte, so byte-identical resuming needs identical batches. **Cost:** a commit made between stopping and resuming a run blocks the resume, including one that changes only documents.
+
+### B29: Exact figures in the preregistration (2026-11-03)
+
+- **Decision:** `docs/PREREGISTRATION.md` fixes a blow-up cap of 10, a floor of 1% of the training standard deviation on the error's denominator, a bad frame as above validation's 80th percentile, within-time AUROC only with at least 5 bad and 5 good frames, 5 random-baseline seeds, and a budget match within 1 percentage point.
+- **Alternatives:** other values were not measured. No model exists, so none could be, and that is the point of fixing them now.
+- **Reason:** `docs/PLAN.md` names these rules but not their values. They are the build's choices and are open to the owner's change until a model exists. The horizon stays at 50 steps, and `LATE_FRAMES` stays at 20 to 90, with obstacles appearing after the window treated as stated there.
+
+### B30: The data spot-check opens test splits (2026-11-03). An exception to the plan's constraint
+
+- **Decision:** the spot-check in Task 4 opens test splits with `final_eval=True` to render a sample scene from each and check stats, stated as an exception in `docs/PREREGISTRATION.md`.
+- **Alternatives:** rely on the statistics in the manifest for those splits, and render only train and val.
+- **Reason:** the plan requires both "test splits are read only by final evaluation" and "render a sample scene from each split". No model exists at that point and nothing gets tuned from it, and an unrendered defect in a test set would cost more. The manifest covers most of the same statistics without opening the splits.
