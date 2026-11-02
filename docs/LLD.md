@@ -1,0 +1,150 @@
+# Sandeha: Low-Level Design
+
+**Status:** interfaces as planned in `docs/PLAN.md`. Only `scripts/long_job.sh` and the package skeleton exist so far. Each section is updated to match the code when its component is built.
+
+## Conventions
+
+- Grids: reference 256×256, neural 128×128. One neural step is 4 reference solver steps.
+- Field tensors are `(B,C,H,W)`. `obstacle` and `inflow` are `(B,1,H,W)`, and `buoyancy` is `(B,)`.
+- Neural input channels, in order: `u, v, density, obstacle, inflow, buoyancy`.
+- Neural output channels: the normalised change in `u, v, density`. Solid cells are forced to zero after prediction.
+
+## Long-job wrapper (built)
+
+`scripts/long_job.sh <name> <command...>`
+
+| Behaviour | Detail |
+|---|---|
+| Exit 2 | Fewer than two arguments, or a name with characters outside letters, digits, `.`, `_`, `-` |
+| Exit 3 | No power supply of type `Mains` reports `online=1`. An unknown state also refuses, so that a job never starts on a guess |
+| Inhibitor | `systemd-inhibit --what=sleep:idle:handle-lid-switch` |
+| Working directory | Project root, wherever the wrapper is called from |
+| Logs | Combined output appended to `runs/<name>.log` and shown on the terminal. `START` and `END` lines with exit code and elapsed seconds appended to `runs/jobs.log` |
+| Exit code | The command's own |
+| Killed wrapper | Leaves a `START` line with no `END` line |
+| Test override | `SANDEHA_POWER_SUPPLY_DIR` replaces `/sys/class/power_supply` |
+
+## Physics
+
+```python
+@dataclass
+class SmokeState:
+    velocity: Tensor   # (B,2,H,W), cell-centred view; the solver may use a MAC grid inside
+    density: Tensor    # (B,1,H,W)
+
+class SmokeSolver:
+    def __init__(self, res: int, device, dt: float, cg_tol: float = 1e-5, cg_max_iter: int = 2000): ...
+    def step(self, state, obstacle, inflow, buoyancy) -> SmokeState: ...
+    def project(self, state, obstacle) -> SmokeState: ...
+    def divergence(self, state, obstacle) -> Tensor: ...
+
+@dataclass
+class Scene:
+    obstacle: np.ndarray               # (res,res) bool at reference grid
+    inflow: np.ndarray                 # (res,res) float rate
+    buoyancy: float
+    late_obstacle: np.ndarray | None   # obstacle added mid-run
+    late_frame: int | None
+
+def sample_scene(rng: np.random.Generator, res: int, split: str) -> Scene: ...
+```
+
+The solver has closed box walls, a MAC grid inside, semi-Lagrangian or MacCormack advection, a preconditioned conjugate gradient pressure solve per batch item, and light density decay. `split` is one of `train val test_a test_b test_c`.
+
+## Data
+
+```python
+def open_split(root: Path, split: str, final_eval: bool = False) -> SplitStore: ...
+
+class Normalizer:   # fitted on train only, saved in data/normalizer.json
+    def encode(self, x: Tensor) -> Tensor: ...
+    def decode(self, x: Tensor) -> Tensor: ...
+
+class StepDataset(Dataset):
+    def __init__(self, store, normalizer, unroll: int = 1): ...
+    # item: input (6,128,128), target_seq (unroll,3,128,128), obstacle, inflow, buoyancy
+```
+
+`SplitStore.fields` is a `float16` memmap of `(scene, frame, 3, 128, 128)`. Writes are atomic per scene. `data/manifest.json` records seeds, config, git commit and the SHA-256 of each split. `open_split` raises `PermissionError` on a test split unless `final_eval=True`, and fails on a checksum mismatch.
+
+## Models and training
+
+```python
+def build_model(cfg: dict) -> nn.Module                 # (B,6,H,W) -> (B,3,H,W), the normalised delta
+def apply_step(model, x: Tensor, normalizer) -> Tensor  # next (B,3,H,W), solid cells forced to zero
+def divergence(velocity: Tensor, obstacle: Tensor) -> Tensor
+def step_loss(pred, target, obstacle, lambda_div: float) -> dict
+def train(cfg: dict, run_dir: Path, resume: bool) -> Path   # returns best checkpoint path
+```
+
+| Item | Detail |
+|---|---|
+| U-Net | Base width 32, 4 levels, GroupNorm, SiLU |
+| FNO | Width 48, 24 modes, 4 layers, coordinate channels because the box is not periodic |
+| Loss | MSE on normalised delta, plus `lambda_div=0.1` × mean squared divergence |
+| Stability | After warm-up, sometimes unroll 1 to 3 steps without gradient; only the last step gets gradients |
+| Optimiser | AdamW, lr `3e-4`, cosine schedule, mixed precision |
+| Duration | `max_minutes` sets total steps from measured throughput |
+| Best checkpoint | Lowest validation rollout error over 20 steps |
+
+## Ensemble and doubt
+
+```python
+class Ensemble:
+    def __init__(self, models: list[nn.Module], normalizer): ...
+    def step(self, x: Tensor) -> EnsembleOut   # .mean (B,3,H,W), .doubt_map (B,1,H,W), .members
+
+def doubt_score(doubt_map, obstacle, method: Literal["mean","p95","p99"]) -> Tensor  # (B,), fluid cells only
+```
+
+`doubt_map` is the square root of per-channel member variance in normalised units, averaged across channels.
+
+## Hybrid simulator
+
+```python
+class Policy:
+    def decide(self, frame: int, doubt: float, ctx: dict) -> bool: ...   # True = hand off now
+# AlwaysAI, AlwaysSolver, FixedSchedule(period), RandomBudget(rate, seed), DoubtThreshold(tau), Oracle(tau)
+
+class HybridSimulator:
+    def __init__(self, ensemble, solver, policy, handoff_frames: int, substeps: int = 4): ...
+    def reset(self, state, obstacle, inflow, buoyancy): ...
+    def set_obstacle(self, obstacle): ...
+    def step(self) -> StepInfo   # .state, .doubt_map, .doubt, .source, .ms, .frames_advanced
+```
+
+Hand-off upsamples the state to 256×256, projects it, runs `4 × handoff_frames` solver steps, emits each frame, and downsamples. Timing calls `torch.cuda.synchronize()`.
+
+Chosen on validation only, and recorded in `results/handoff_selection.json`: `handoff_frames` from `{2, 5, 10}`, doubt aggregation from `{mean, p95, p99}`, and the frozen threshold `tau`, which gives the lowest primary error with solver share at or below 25%.
+
+## Evaluation
+
+```python
+def nrmse(pred, ref, obstacle) -> float            # normalised by reference std, fluid cells
+def bootstrap_ci(values_by_scene, n=2000) -> tuple[float, float]   # resampling scenes
+def spearman(x, y) -> float
+def auroc(score, label) -> float
+def rollout(sim, scene, ref, start: int, horizon: int) -> RolloutTrace
+```
+
+A blown-up rollout gets a capped maximum error and stays in the average. Result files are `results/exp_accuracy.json`, `exp_doubt.json`, `exp_handoff.json` and `exp_ablation.json`, each carrying git commit, data manifest hash, checkpoint hashes and config.
+
+## Public-dataset track
+
+```python
+class WellStepDataset(Dataset):   # h5py reader on official splits; input and next frame, normalised from train
+    def __init__(self, root: Path, split: Literal["train","valid","test"], final_eval: bool = False): ...
+```
+
+The loader confirms grid, step and trajectory counts rather than assuming them.
+
+## Demo protocol
+
+WebSocket at `/ws`.
+
+| Direction | Content |
+|---|---|
+| Server to client | Binary frame: JSON header (`frame, source, doubt, tau, fps, solver_share, mode`), then `uint8` density, doubt and obstacle at 128×128 |
+| Client to server | JSON: `brush{x,y,r,erase}`, `preset{name}`, `reset`, `threshold{tau}`, `mode{auto,ai,solver}` |
+
+The simulation runs in one thread. Each client gets the latest frame, and older frames are dropped.

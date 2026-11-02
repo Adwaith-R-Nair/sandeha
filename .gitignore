@@ -1,0 +1,7 @@
+# Anchored to the repo root so src/sandeha/data/ stays tracked.
+/data/
+/runs/
+/checkpoints/
+.venv/
+__pycache__/
+.pytest_cache/
