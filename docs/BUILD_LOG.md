@@ -315,7 +315,7 @@ An earlier run, before the placement change, had 6 survivors, and these led to n
 
 ### Measured scene properties
 
-From `results/scene_check.json`, generated at commit `d870399` with a clean tree. The sampler has not changed since. Peak GPU memory: 80.2 MiB.
+From `results/scene_check.json` as generated at commit `d870399` with a clean tree. The sampler changed afterwards, and that file was regenerated: see "Task 3 review fixes" for the current figures. The tables here describe the earlier sampler, and that version of the file is in the git history. Peak GPU memory: 80.2 MiB.
 
 Mean share of the box covered by one shape, over 300 draws:
 
@@ -371,6 +371,8 @@ Both figures were inspected at `d870399`. In `scene_check.png`, each split shows
 
 ### Open items, for Task 4
 
+Updated by "Task 3 review fixes" below, which replaces the items on low `test_c` scenes and on the horizon.
+
 - **`dt` is still not chosen.** Everything here used `dt=0.01`. Travel scales with `dt`, and the 7.31 largest travel leaves a margin against the 10.24-cell thinnest wall of 1.4 times, or about `dt=0.014` before the two meet. Largest travel comes from eight scenes per group, so it is not a bound.
 - **Thin-wall crossing was not measured directly at 256×256.** Travel below thickness is the criterion. It rests on the Task 2 one-off at 64×64, where a one-cell wall let smoke through at between 3.2 and 6.4 cells per step.
 - **Low `test_c` scenes are slow to reach obstacles.** At the low corner, 6 of 8 scenes touch only after frame 70, the end of the planned window, or never. Corner values are the extreme, and a quarter of `test_c` scenes are low on both counts. Geometry has little effect on those frames, so `test_c` results should be read per pairing, and `docs/PREREGISTRATION.md` should say so. The ranges have not been changed because of this.
@@ -383,6 +385,121 @@ Both figures were inspected at `d870399`. In `scene_check.png`, each split shows
 
 - The independent phase check required by `docs/DESIGN.md` section 8 has not been done for Phase 2.
 - Phase 2 commits are not yet pushed. The plan pushes at the end of each phase.
+
+### Next
+
+The independent Phase 2 check and push, then Task 4: generation and test-set lock.
+
+## 2026-11-03: Task 3 review fixes
+
+### Findings
+
+Each was checked before any change, in one-off runs against commit `7a1f105`. These runs are not saved.
+
+| Finding | Real? | Fix |
+|---|---|---|
+| Blocking: about half of `test_c` is a training flow with rescaled density | Yes. On one geometry, buoyancy 0.6 with strength 9 against 1.8 with 3 differed in velocity by `2.81e-07` at 64×64 over 200 steps and `3.83e-07` at 256×256 over 240 steps. Density divided by 3 differed by `3.99e-07` and `7.68e-07`. A different product, 2 with 5, differed in velocity by 0.564 and 0.881. Over 1500 scenes at 64×64, 51.5% of `test_c` products fell inside the training range. The review measured 50.5% | Sides tied (`DECISIONS.md` B20) |
+| Minor: the plume path limit of 0.85 is loose | Yes. The share at 256×256 was 1.0 in all five splits. A miss was still possible by construction, at low probability | Limit raised to every scene, reach narrowed (B21) |
+| Minor: families redrawn inside the pose loop, so they are not uniform | Yes. Over 908 placements in `train` at 256×256: circle 0.370, rectangle 0.351, wall 0.279. The review measured 0.396, 0.334 and 0.270 | Drawn once per placement (B22) |
+| Minor: about 28% of late obstacles appear after the planned window | Yes. Frames 71 to 90 are 20 of the 71 possible values, or 28.2%, which is about 9% of scenes in the late-obstacle splits | Recorded below for Task 4. The range is not changed yet, because the horizon isn't fixed |
+
+The docstring's "Only the physics is unfamiliar" was false for the mixed pairings, and is now true of both sides. Input amplitudes still leave their ranges with the flow, and the docstring says so.
+
+### Test runs
+
+| Step | Result |
+|---|---|
+| New tests against the old sampler | 8 failed, 7 passed. Failed: the tied-sides test, the flow parameter range test, the reach constant test, the family rule test, and the family share test in `train`, `val`, `test_a` and `test_c` |
+| Tests that passed before the fix | The family share test in `test_b`, where all three unseen families fit about equally well. All 5 cases of `test_every_scene_puts_an_obstacle_above_a_source`, and `test_flow_depends_only_on_buoyancy_times_strength`, which checks an existing solver property. These were seen failing only on mutants, below |
+| Full suite, `uv run pytest`, at `1166326` | 196 passed in 140.65s |
+
+Mutants, on scratch copies against the fixed code, running only the new tests:
+
+| Mutant | Tests that fail |
+|---|---|
+| Reach 0.15, and reach 0.3 | All 5 every-scene cases and the reach constant test |
+| Sides independent again | Tied-sides test, flow parameter range test |
+| Always the low side | Tied-sides test |
+| High side 80% of the time | Tied-sides test |
+| High strength range lowered to 4 to 5 | Tied-sides test, flow parameter range test |
+| Family redrawn per pose | Family rule test, and family share test in `train`, `test_a`, `test_c` and `val` |
+| Density clamped at 0.3 in the solver, so no longer linear | Flow parameter test |
+
+A one-off run over 13000 scenes at 256×256 found no scene without an obstacle above a source and no sampler error.
+
+### Measured scene properties
+
+From `results/scene_check.json`, generated at commit `1166326` with a clean tree. Peak GPU memory: 80.2 MiB. Family areas are unchanged from the earlier table, since the builders didn't change.
+
+Flow parameter, from one training scene:
+
+| Grid and steps | Same product: velocity difference | Same product: density difference, rescaled | Other product: velocity difference | Other product: density difference |
+|---|---|---|---|---|
+| 64×64, 200 | `4.42e-07` | `5.96e-07` | 0.757 | 0.815 |
+| 256×256, 240 | `1.80e-06` | `3.05e-06` | 1.080 | 1.151 |
+
+Over 200 scenes per split at 256×256. Solid fraction counts late obstacles. All splits have an obstacle above a source in every scene:
+
+| Split | Mean solid fraction | Largest | Late share | Sampling time per scene (ms) | Buoyancy times strength, min to max |
+|---|---|---|---|---|---|
+| train | 0.064 | 0.148 | 0.350 | 14 | 3.23 to 20.62 |
+| val | 0.069 | 0.153 | 0.370 | 15 | 3.33 to 20.10 |
+| test_a | 0.066 | 0.178 | 0.325 | 14 | 3.66 to 18.67 |
+| test_b | 0.061 | 0.128 | 0 | 65 | 3.27 to 20.02 |
+| test_c | 0.059 | 0.114 | 0 | 13 | 0.62 to 43.74 |
+
+Family shares among placed shapes, over the 200 scenes of each split, where one standard deviation is about 0.022:
+
+| Split | Placed | Shares |
+|---|---|---|
+| train | 479 | circle 0.340, rectangle 0.334, wall 0.326 |
+| val | 479 | circle 0.351, rectangle 0.347, wall 0.303 |
+| test_a | 460 | circle 0.339, rectangle 0.337, wall 0.324 |
+| test_b | 405 | star 0.341, letter 0.363, blob 0.296 |
+| test_c | 407 | circle 0.349, rectangle 0.344, wall 0.307 |
+
+Eight scenes per group, at 256×256 with `dt=0.01` for 480 steps. The corner groups set physics to the extreme of the named range. `test_c_low_side` and `test_c_high_side` are new, and keep the physics the sampler gave them:
+
+| Group | Largest travel (cells/step) | Largest CG iterations | Largest divergence | Unconverged item-steps | Largest density in solid | Finite | Item steps/s |
+|---|---|---|---|---|---|---|---|
+| train | 4.51 | 15 | 0.00258 | 0 | 0 | yes | 92.9 |
+| test_b | 4.40 | 15 | 0.00233 | 0 | 0 | yes | 92.4 |
+| train_top_corner | 6.54 | 15 | 0.00368 | 0 | 0 | yes | 95.6 |
+| test_c_low_corner | 1.25 | 12 | 0.00121 | 0 | 0 | yes | 107.0 |
+| test_c_high_corner | 7.32 | 12 | 0.00444 | 0 | 0 | yes | 100.0 |
+| test_c_low_side | 2.17 | 12 | 0.00180 | 0 | 0 | yes | 106.7 |
+| test_c_high_side | 6.91 | 14 | 0.00447 | 0 | 0 | yes | 91.7 |
+
+First frame at which smoke above density 0.01 touches a cell next to the initial obstacle:
+
+| Group | Frame per scene |
+|---|---|
+| train | 32, 49, 19, 42, 47, 23, 20, 17 |
+| test_b | 21, 37, 45, 22, 58, 22, 30, 15 |
+| train_top_corner | 37, 34, 19, 18, 28, 15, 33, 24 |
+| test_c_low_corner | 92, 75, 80, 72, 59, 79, 68, 76 |
+| test_c_high_corner | 14, 19, 27, 25, 27, 10, 21, 8 |
+| test_c_low_side | 45, 54, 52, 67, 40, 59, 71, 79 |
+| test_c_high_side | 18, 30, 22, 20, 22, 20, 30, 14 |
+
+### Visual check
+
+Both regenerated figures were inspected at `1166326`. In `scene_check.png`, each split shows the intended families with sources below the shapes, and the `test_c` panels have both values low or both high. In `scene_check_flow.png`, plumes bend around obstacles without crossing them. The low side shows slow laminar plumes with few structures at frame 60, and the high side fills much of the box.
+
+### Open items, for Task 4
+
+- **Report `test_c` per side.** `docs/PREREGISTRATION.md` must report the low and high sides as well as pooled. At 30 scenes the realised split varies around 15 each, so the manifest should record it.
+- **Low side reaches obstacles later.** In these eight scenes with sampled physics, 6 touch by frame 70, the end of the planned window, and 2 touch at frames 71 and 79. At the low corner, 2 of 8 touch by frame 70, and all 8 touch by frame 92. The ranges are not changed. Low-side scenes that touch late still test an unfamiliar flow, but they show the model little of the obstacle interaction within the window.
+- **Late obstacles after the window.** `LATE_FRAMES` runs to frame 90 and the planned window ends at frame 70, so about 28% of late obstacles appear after it. The primary metric won't see those events. When the horizon is fixed, either narrow `LATE_FRAMES` to the window or state in `docs/PREREGISTRATION.md` that those scenes only count before their obstacle appears. A late obstacle's own contact has still not been measured.
+- **Horizon.** In train and `test_b`, the largest first-touch frames are 49 and 58, inside the planned window, so these eight-scene groups give no reason to extend it.
+- **`dt`.** The largest travel is now 7.32 cells per step, which leaves the same margin of 1.4 times against the 10.24-cell thinnest wall, or about `dt=0.014`.
+- **Largest divergence** is now 0.00447, on `test_c_high_side`, above the plan's `1e-3`. It follows the relative stopping rule in `docs/DECISIONS.md` B13.
+- **Generation throughput** was 91.7 to 107 item steps per second here. At 360 scenes of 480 steps, that remains an estimate of about 30 minutes of solver time, excluding saving and downsampling.
+
+### Not done
+
+- The independent phase check for Phase 2 and the push are still outstanding, as above.
+- `test_b` still has no equivalent review of whether its flows differ enough from training. Its geometry differs by construction, and that was not re-measured here.
 
 ### Next
 

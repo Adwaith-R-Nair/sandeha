@@ -108,7 +108,7 @@ Before any data is generated, tests must show that: divergence after projection 
 | Validation | Same distribution as training | All tuning and threshold selection |
 | Test A | Same distribution, unseen scenes | Baseline performance |
 | Test B | **Unseen shape families**, such as stars, letters and hand-drawn blobs | Does doubt rise where the model is out of its depth? |
-| Test C | Inflow and buoyancy outside the training range | Same question, for physics rather than geometry |
+| Test C | Inflow and buoyancy outside the training range, both low or both high, so that their product is outside it too (`DECISIONS.md` B20) | Same question, for physics rather than geometry |
 
 Training shapes are limited to simple families such as circles, rectangles and walls, so that Tests B and C are truly unfamiliar.
 

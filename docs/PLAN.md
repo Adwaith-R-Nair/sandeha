@@ -132,7 +132,7 @@ TRAIN_SHAPES = ("circle", "rectangle", "wall")
 UNSEEN_SHAPES = ("star", "letter", "blob")
 def sample_scene(rng: np.random.Generator, res: int, split: str) -> Scene: ...
 ```
-`split` is one of `train val test_a test_b test_c`. Ranges: training buoyancy and inflow strength span the middle of the physical range, and `test_c` samples from outside it on both sides. A third of `train`, `val` and `test_a` scenes have a `late_obstacle`.
+`split` is one of `train val test_a test_b test_c`. Ranges: training buoyancy and inflow strength span the middle of the physical range, and `test_c` samples from outside it on both sides, with both low or both high (`DECISIONS.md` B20). A third of `train`, `val` and `test_a` scenes have a `late_obstacle`.
 
 - [ ] Write failing tests: `test_train_never_uses_unseen_shapes`, `test_test_b_only_uses_unseen_shapes`, `test_test_c_outside_train_ranges`, `test_inflow_not_blocked` (inflow cells aren't solid at the start), `test_sampling_is_seeded`.
 - [ ] Implement, see tests pass, and commit.
@@ -170,7 +170,7 @@ Starting sizes, scaled down if the measured solver speed would exceed the 1.5 h 
   - `test_normalizer_uses_train_only`.
   - `test_item_shapes`: channels and shapes as above.
 - [ ] Implement. Writes are atomic per scene. `data/manifest.json` records seeds, config, git commit and SHA-256 of every split.
-- [ ] Before generation, write `docs/PREREGISTRATION.md`. It fixes: primary metric, horizon 50 AI steps from start frame 20 (extended only if solver checks show the plume hasn't reached typical obstacles by then), secondary metrics, within-time correlation as the evidence measure, bad-frame threshold rule, threshold rule (Task 8), baseline budget rule, and test-set policy. Commit it **before** any model exists.
+- [ ] Before generation, write `docs/PREREGISTRATION.md`. It fixes: primary metric, horizon 50 AI steps from start frame 20 (extended only if solver checks show the plume hasn't reached typical obstacles by then), secondary metrics, within-time correlation as the evidence measure, bad-frame threshold rule, threshold rule (Task 8), baseline budget rule, test-set policy, `test_c` results reported per side as well as pooled, and how late obstacles after the window are treated. Commit it **before** any model exists.
 - [ ] Run `scripts/long_job.sh data uv run scripts/generate_data.py --config configs/data.yaml`.
 - [ ] Spot-check: render a sample scene from each split, and check stats, NaN count (must be 0) and the manifest. Log timings. Commit.
 

@@ -92,17 +92,19 @@ def sample_scene(rng: np.random.Generator, res: int, split: str) -> Scene: ...
 |---|---|---|---|
 | `train`, `val`, `test_a` | circle, rectangle, wall | Inside the training ranges, 1 to 3 and 3 to 7 | In a third of scenes, at frame 20 to 90 |
 | `test_b` | star, letter, blob | Inside the training ranges | None |
-| `test_c` | circle, rectangle, wall | Both outside: buoyancy 0.4 to 0.8 or 3.5 to 4.5, strength 1.5 to 2.5 or 8 to 10 | None |
+| `test_c` | circle, rectangle, wall | Both outside and on the same side: buoyancy 0.4 to 0.8 with strength 1.5 to 2.5, or buoyancy 3.5 to 4.5 with strength 8 to 10. Their product is 0.6 to 2 or 28 to 45, against 3 to 21 in training | None |
 
 Rules that hold in every split:
 
 - Each scene has 1 or 2 sources with raised-cosine edges, and 1 to 3 obstacles.
-- The first obstacle's centre is within 0.08 of a source along x, so a plume meets it.
+- The first obstacle's centre is within 0.06 of a source along x, so it always lies over at least one column of that source. This is a rule on geometry. Whether smoke touches it by a given frame depends on the flow, and is measured in `results/scene_check.json`.
+- Each placement draws its family once, then retries poses, so families are equally likely.
+- The flow depends on buoyancy and strength only through their product. Density scales with strength.
 - No solid part is thinner than `MIN_THICKNESS`, 0.04 of the domain.
 - Solids keep 0.02 clear of sources and box walls.
 - A scene in which any source cell can't reach the top row through fluid, with the late obstacle in place, is redrawn.
 
-`uv run python scripts/check_scenes.py` writes `results/scene_check.json` and two figures. See `DECISIONS.md` B17 to B19.
+`uv run python scripts/check_scenes.py` writes `results/scene_check.json` and two figures. See `DECISIONS.md` B17 to B21.
 
 ## Data
 

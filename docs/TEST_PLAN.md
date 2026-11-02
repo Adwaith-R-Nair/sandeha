@@ -63,18 +63,20 @@ Scene checks, in `tests/physics/test_scenes.py`:
 | `test_train_never_uses_unseen_shapes`, `test_test_b_only_uses_unseen_shapes` | Records which families the sampler really draws, including rejected attempts, and requires exactly the allowed set |
 | `test_families_really_are_different_shapes` | Each family's overlap with a disc of equal area. Catches a builder that draws the wrong thing |
 | `test_unseen_families_are_not_simply_larger` | Unseen families cover the same area as training families, within 10% on average |
-| `test_test_c_outside_train_ranges`, `test_test_c_covers_both_sides_of_both_ranges_in_every_pairing`, `test_other_splits_stay_inside_train_ranges` | Physics ranges per split, with all four low and high pairings in `test_c` |
+| `test_test_c_outside_train_ranges`, `test_test_c_pairs_low_with_low_and_high_with_high`, `test_test_c_flow_parameter_is_outside_the_train_range`, `test_other_splits_stay_inside_train_ranges` | Physics ranges per split. `test_c` has only the two tied pairings, about equally often, and its buoyancy times strength is outside the training range |
+| `test_flow_depends_only_on_buoyancy_times_strength` | Same product gives the same velocity and rescaled density, within `1e-5`. A different product differs by over 0.1. This is the reason for the tied pairings (`DECISIONS.md` B20) |
 | `test_inflow_not_blocked`, `test_obstacles_keep_off_sources_even_when_placed_right_on_them` | Sources stay clear, including when placement is forced onto them |
 | `test_inflow_edges_are_smooth` | No hard source edges (`DECISIONS.md` B12) |
 | `test_inflow_sits_below_obstacles` | Catches a flipped axis |
-| `test_most_scenes_put_an_obstacle_in_a_plume_path` | More than 85% of scenes have an obstacle above a source |
+| `test_every_scene_puts_an_obstacle_above_a_source`, `test_in_path_reach_cannot_miss_a_source` | Every one of 200 scenes per split at 256×256 has an obstacle above a source, and the reach constant makes a miss impossible (`DECISIONS.md` B21) |
+| `test_placed_families_are_equally_likely`, `test_a_family_is_kept_when_its_first_pose_is_rejected` | Each family is placed a third of the time, within four binomial standard deviations (`DECISIONS.md` B22) |
 | `test_obstacles_are_thick_enough_not_to_be_jumped`, `test_thickness_check_*` | No solid part is thinner than about 9 cells at 256×256, and the check itself detects thin walls and spikes |
 | `test_smoke_always_has_a_way_up`, `test_sealed_draws_are_thrown_away`, `test_way_up_*`, `test_sampler_*` | A plume is never sealed in, judged with the late obstacle in place |
 | `test_a_third_have_a_late_obstacle`, `test_no_late_obstacle_in_the_unfamiliar_splits`, `test_late_obstacle_is_valid_when_present` | Late obstacles per split, with a binomial limit on the share |
 | `test_sampling_is_seeded`, `test_sampling_is_the_same_in_a_new_process` | Determinism within a process and across processes with different hash seeds |
 | `test_scenes_run_through_the_solver` | Batched scenes from each split stay finite and converged on the GPU, with a late obstacle applied |
 
-`uv run python scripts/check_scenes.py` runs 40 scenes for a full 480 solver steps and renders `results/figures/scene_check.png` and `scene_check_flow.png`, which are inspected by eye.
+`uv run python scripts/check_scenes.py` runs 56 scenes for a full 480 solver steps, measures family shares and the flow parameter, and renders `results/figures/scene_check.png` and `scene_check_flow.png`, which are inspected by eye.
 
 ## Training (Task 5)
 

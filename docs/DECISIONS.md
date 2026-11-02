@@ -130,12 +130,12 @@ Each major decision, the alternatives and the reason. Status is **Default** for 
 
 - **Decision:**
   - `test_b` uses unseen shapes with training physics.
-  - `test_c` uses training shapes, with buoyancy and inflow strength both outside the training ranges. Each falls low or high independently, with a gap between the ranges.
+  - `test_c` uses training shapes, with buoyancy and inflow strength both outside the training ranges, with a gap between the ranges. Each fell low or high independently until B20, which ties them.
   - Neither has late obstacles.
   - One inflow strength applies per scene, and the inflow's peak is exactly that value.
 - **Alternatives:** a late obstacle in `test_b` and `test_c`, or only one physics quantity out of range per `test_c` scene.
 - **Reason:** a rise in doubt on `test_b` or `test_c` should have one explanation. The plan requires late obstacles only in `train`, `val` and `test_a`, and leaves the other two open.
-- **Limit:** the values are chosen around the solver checks' buoyancy of 2 and strength of 5. `test_c` pairs each range's low or high side independently, so a quarter of its scenes are slow on both counts: see the Task 3 entry in `BUILD_LOG.md`.
+- **Limit:** the values are chosen around the solver checks' buoyancy of 2 and strength of 5. The independent pairing described here was replaced by B20.
 
 ### B18: Limits on scene geometry (2026-11-03)
 
@@ -151,7 +151,31 @@ Each major decision, the alternatives and the reason. Status is **Default** for 
 
 ### B19: Shape sizes balanced, and the first obstacle placed in a plume's path. Both changed after measuring (2026-11-03)
 
-- **Decision:** star, letter and blob sizes were reduced so that unseen families cover the same mean area as training families. The first obstacle's centre is drawn within 0.08 of a source along x. Others stay uniform across the placement range.
+- **Decision:** star, letter and blob sizes were reduced so that unseen families cover the same mean area as training families. The first obstacle's centre is drawn within 0.08 of a source along x, narrowed to 0.06 by B21. Others stay uniform across the placement range.
 - **Alternatives:** the first sizes, and uniform placement of every obstacle.
 - **Reason:** unseen families first covered about 42% more area than training ones, so doubt on `test_b` could have risen because more of the box was solid. With uniform placement, smoke in 3 of 8 `test_b` check scenes touched an obstacle only after frame 70, the end of the planned window, or never. Such a scene shows the model nothing of the unseen geometry, which would understate doubt on the set built to measure it. Both changes use geometry alone. No data or model existed at the time.
 - **Cost:** with the first obstacle always near a source, scenes where the plume rises freely past all shapes are rarer in every split, including training.
+
+### B20: `test_c` ties buoyancy and inflow strength to the same side (2026-11-03). Changes B17, the plan and the design text
+
+- **Decision:** a `test_c` scene has both quantities low (buoyancy 0.4 to 0.8, strength 1.5 to 2.5) or both high (3.5 to 4.5, 8 to 10), each side with equal chance. A test asserts that their product is outside the training range. `docs/PREREGISTRATION.md` reports `test_c` per side as well as pooled.
+- **Alternatives:** keep all four pairings, label the two mixed pairings as amplitude-only, and report per pairing. Or keep independent sides and reject scenes whose product falls in the training range, which shrinks the mixed pairings to their extremes.
+- **Reason:** the solver's equations depend on one flow parameter. With density rescaled by `1/strength`, velocity feels `buoyancy * strength` and density advection is linear, so `strength` affects only density's amplitude. In `results/scene_check.json`, buoyancy 0.6 with strength 9 against buoyancy 1.8 with strength 3 differs in velocity by `1.8e-06` at 256×256, and a different product differs by 1.08. The mixed pairings had products from 3.2 to 8 and 5.25 to 11.25, inside the training range of 3 to 21. About half of the old `test_c` was therefore a training flow with rescaled density, against B17's aim and the design's "for physics rather than geometry". The change came before the test set was locked, and no data or model existed. With about 30 scenes planned, four pairings would leave about 7 scenes each, and two of the four would not be new flows. Tying leaves about 15 per side, all with new flows.
+- **Limits:**
+  - Input amplitude and flow regime leave their ranges together, so a rise in doubt on `test_c` can't be split between them. The set no longer has an amplitude-only group that could separate them. B17's "one explanation" holds for physics against geometry, not within physics.
+  - Scenes differ in strength within the training range without any change in flow beyond the product, so training sees one flow parameter, with a separate amplitude, rather than two independent quantities.
+  - Train products are sparse near both ends of 3 to 21, so the distance from `test_c` to well-covered training flows is larger than the gaps from 2 to 3 and from 21 to 28 suggest.
+
+### B21: In-path reach narrowed from 0.08 to 0.06, and the check made exact (2026-11-03). Changed after review
+
+- **Decision:** `_IN_PATH_REACH` is 0.06. The test requires every scene, not more than 85%, to have an obstacle above a source, and a second test checks the constant against the narrowest case.
+- **Alternatives:** keep 0.08 and state that a rare miss is possible. Or reject poses that miss, which would keep the rule true for any reach and so hide a widened reach from the test.
+- **Reason:** the 0.85 limit only separated the current placement from uniform placement, so a partial regression could pass. At 0.08 the measured share was 1.0, but a miss was still possible: an upright wall of half thickness 0.02 over a source of radius 0.05 reaches 0.07 from the centre. At 0.06 at least 0.01 of overlap remains, or 2 columns at 256×256.
+- **Limit:** this is about columns. Smoke may still bend away, or arrive late: see the first-touch table in `BUILD_LOG.md`. The overlap can be narrow. Coverage of a source's full width is not guaranteed.
+
+### B22: A placement draws its family once (2026-11-03). Changed after review
+
+- **Decision:** `_place_shape` draws the family before the pose loop, so families are equally likely among placements. Each family is drawn with equal chance regardless of how often its poses fail.
+- **Alternative:** keep the redraw and record the skew.
+- **Reason:** redrawing on each rejected pose favoured families that fit easily, and made walls, the smallest and most directional family, the rarest. The skew served no purpose and no document stated it.
+- **Cost:** a family that fits poorly could exhaust its 200 attempts and raise an error, where before another family could have taken its place. In a one-off run at the edge of the placement range, the lowest acceptance was 0.2175, for walls. That gives a chance of about `5e-22` of exhausting the attempts. Over 13000 scenes, no error occurred.

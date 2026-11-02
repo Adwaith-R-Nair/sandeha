@@ -1,6 +1,6 @@
 {
   "git": {
-    "head": "d87039915b90d24d80ebcd491ce37b84a5a101be",
+    "head": "1166326a0d83b71c1e5ec9bffd13c7f731f9c253",
     "working_tree_changed": false
   },
   "device": "NVIDIA GeForce RTX 3060 Laptop GPU",
@@ -46,246 +46,416 @@
       "max": 0.0485992431640625
     }
   },
-  "splits": {
+  "family_placed_shares": {
     "train": {
-      "scenes": 200,
-      "seconds_per_scene": 0.012526087030000781,
-      "solid_fraction": {
-        "mean": 0.06601715087890625,
-        "min": 0.01397705078125,
-        "max": 0.1490020751953125
-      },
-      "late_share": 0.295,
-      "buoyancy": {
-        "mean": 1.9925921250380452,
-        "min": 1.002253453761511,
-        "max": 2.9968238402282
-      },
-      "inflow_strength": {
-        "mean": 4.820808846950531,
-        "min": 3.0039165019989014,
-        "max": 6.996109962463379
+      "placed": 479,
+      "shares": {
+        "circle": 0.34029227557411273,
+        "rectangle": 0.33402922755741127,
+        "wall": 0.325678496868476
       }
     },
     "val": {
-      "scenes": 200,
-      "seconds_per_scene": 0.013611165965003238,
-      "solid_fraction": {
-        "mean": 0.06543777465820312,
-        "min": 0.0120849609375,
-        "max": 0.1598052978515625
-      },
-      "late_share": 0.375,
-      "buoyancy": {
-        "mean": 1.966763742244259,
-        "min": 1.0236320818407607,
-        "max": 2.99183511813834
-      },
-      "inflow_strength": {
-        "mean": 4.888517916202545,
-        "min": 3.002732038497925,
-        "max": 6.9954400062561035
+      "placed": 479,
+      "shares": {
+        "circle": 0.35073068893528186,
+        "rectangle": 0.3465553235908142,
+        "wall": 0.302713987473904
       }
     },
     "test_a": {
-      "scenes": 200,
-      "seconds_per_scene": 0.01252874996999708,
-      "solid_fraction": {
-        "mean": 0.07139045715332032,
-        "min": 0.0121917724609375,
-        "max": 0.1496124267578125
-      },
-      "late_share": 0.405,
-      "buoyancy": {
-        "mean": 2.0785689422953477,
-        "min": 1.032787380337869,
-        "max": 2.9992539854520395
-      },
-      "inflow_strength": {
-        "mean": 5.126391808986664,
-        "min": 3.0283801555633545,
-        "max": 6.99298620223999
+      "placed": 460,
+      "shares": {
+        "circle": 0.3391304347826087,
+        "rectangle": 0.33695652173913043,
+        "wall": 0.3239130434782609
       }
     },
     "test_b": {
-      "scenes": 200,
-      "seconds_per_scene": 0.06092567340499954,
-      "solid_fraction": {
-        "mean": 0.06155548095703125,
-        "min": 0.0169677734375,
-        "max": 0.1253204345703125
-      },
-      "late_share": 0.0,
-      "buoyancy": {
-        "mean": 2.0134062502223107,
-        "min": 1.0031960853573803,
-        "max": 2.997454995403676
-      },
-      "inflow_strength": {
-        "mean": 4.946741038560868,
-        "min": 3.0295190811157227,
-        "max": 6.991209030151367
+      "placed": 405,
+      "shares": {
+        "blob": 0.2962962962962963,
+        "letter": 0.362962962962963,
+        "star": 0.34074074074074073
       }
     },
     "test_c": {
+      "placed": 407,
+      "shares": {
+        "circle": 0.3488943488943489,
+        "rectangle": 0.343980343980344,
+        "wall": 0.3071253071253071
+      }
+    }
+  },
+  "flow_parameter": [
+    {
+      "res": 64,
+      "steps": 200,
+      "base_buoyancy_strength": [
+        1.8,
+        3.0
+      ],
+      "same_product_buoyancy_strength": [
+        0.6,
+        9.0
+      ],
+      "other_product_buoyancy_strength": [
+        2.0,
+        5.0
+      ],
+      "same_product_velocity_difference": 4.420766401835863e-07,
+      "same_product_density_difference_after_rescaling": 5.961549618405115e-07,
+      "other_product_velocity_difference": 0.7571775317192078,
+      "other_product_density_difference": 0.8151568174362183
+    },
+    {
+      "res": 256,
+      "steps": 240,
+      "base_buoyancy_strength": [
+        1.8,
+        3.0
+      ],
+      "same_product_buoyancy_strength": [
+        0.6,
+        9.0
+      ],
+      "other_product_buoyancy_strength": [
+        2.0,
+        5.0
+      ],
+      "same_product_velocity_difference": 1.7963646996577154e-06,
+      "same_product_density_difference_after_rescaling": 3.0509188491123496e-06,
+      "other_product_velocity_difference": 1.0801670551300049,
+      "other_product_density_difference": 1.1510697603225708
+    }
+  ],
+  "splits": {
+    "train": {
       "scenes": 200,
-      "seconds_per_scene": 0.011902627555000435,
+      "seconds_per_scene": 0.013769589765006458,
       "solid_fraction": {
-        "mean": 0.05370529174804688,
-        "min": 0.012451171875,
-        "max": 0.1151580810546875
+        "mean": 0.06371726989746093,
+        "min": 0.011444091796875,
+        "max": 0.148468017578125
+      },
+      "late_share": 0.35,
+      "buoyancy": {
+        "mean": 2.037311751865104,
+        "min": 1.0183008497193777,
+        "max": 2.9800709019833977
+      },
+      "inflow_strength": {
+        "mean": 4.962382535934449,
+        "min": 3.0268383026123047,
+        "max": 6.998065948486328
+      },
+      "buoyancy_times_strength": {
+        "mean": 10.101588840159385,
+        "min": 3.229077884112735,
+        "max": 20.61712995839185
+      },
+      "share_with_an_obstacle_above_a_source": 1.0
+    },
+    "val": {
+      "scenes": 200,
+      "seconds_per_scene": 0.014672609765002563,
+      "solid_fraction": {
+        "mean": 0.06942291259765625,
+        "min": 0.0148773193359375,
+        "max": 0.1529693603515625
+      },
+      "late_share": 0.37,
+      "buoyancy": {
+        "mean": 1.9861459971080624,
+        "min": 1.0131939062105304,
+        "max": 2.9866165086187113
+      },
+      "inflow_strength": {
+        "mean": 4.978562220335006,
+        "min": 3.019141674041748,
+        "max": 6.999551773071289
+      },
+      "buoyancy_times_strength": {
+        "mean": 9.88900118058804,
+        "min": 3.3257399824547824,
+        "max": 20.095123800198987
+      },
+      "share_with_an_obstacle_above_a_source": 1.0
+    },
+    "test_a": {
+      "scenes": 200,
+      "seconds_per_scene": 0.01378526254999997,
+      "solid_fraction": {
+        "mean": 0.06584548950195312,
+        "min": 0.0136260986328125,
+        "max": 0.177581787109375
+      },
+      "late_share": 0.325,
+      "buoyancy": {
+        "mean": 1.9910662897474085,
+        "min": 1.016895273103018,
+        "max": 2.996493047390798
+      },
+      "inflow_strength": {
+        "mean": 5.005125305652618,
+        "min": 3.0125911235809326,
+        "max": 6.989665508270264
+      },
+      "buoyancy_times_strength": {
+        "mean": 9.865938794450715,
+        "min": 3.659250772949625,
+        "max": 18.670597040337896
+      },
+      "share_with_an_obstacle_above_a_source": 1.0
+    },
+    "test_b": {
+      "scenes": 200,
+      "seconds_per_scene": 0.06490480812500209,
+      "solid_fraction": {
+        "mean": 0.06108451843261719,
+        "min": 0.0186004638671875,
+        "max": 0.128387451171875
       },
       "late_share": 0.0,
       "buoyancy": {
-        "mean": 2.3852370291671816,
-        "min": 0.40317496330307145,
-        "max": 4.488398476644953
+        "mean": 1.9460593909473232,
+        "min": 1.0013032547207934,
+        "max": 2.9830298683190786
       },
       "inflow_strength": {
-        "mean": 5.479028975367546,
-        "min": 1.5060207843780518,
-        "max": 9.972630500793457
-      }
+        "mean": 5.114527227878571,
+        "min": 3.0020337104797363,
+        "max": 6.991209030151367
+      },
+      "buoyancy_times_strength": {
+        "mean": 9.903991211958077,
+        "min": 3.2705986240626337,
+        "max": 20.01728131930112
+      },
+      "share_with_an_obstacle_above_a_source": 1.0
+    },
+    "test_c": {
+      "scenes": 200,
+      "seconds_per_scene": 0.01322088159499799,
+      "solid_fraction": {
+        "mean": 0.058572998046875,
+        "min": 0.01275634765625,
+        "max": 0.113555908203125
+      },
+      "late_share": 0.0,
+      "buoyancy": {
+        "mean": 2.130464320046761,
+        "min": 0.40025014096689326,
+        "max": 4.495440311088977
+      },
+      "inflow_strength": {
+        "mean": 5.184048068523407,
+        "min": 1.5146499872207642,
+        "max": 9.976606369018555
+      },
+      "buoyancy_times_strength": {
+        "mean": 16.91979259150453,
+        "min": 0.6214797000337793,
+        "max": 43.743057995374706
+      },
+      "share_with_an_obstacle_above_a_source": 1.0
     }
   },
   "runs": {
     "train": {
       "scenes": 8,
       "steps": 480,
-      "seconds": 39.17236825600048,
-      "item_steps_per_second": 98.02828296989124,
-      "largest_travel_cells_per_step": 4.0966729736328125,
-      "mean_of_travel_cells_per_step": 3.2773686823916317,
+      "seconds": 41.3402119099992,
+      "item_steps_per_second": 92.88776768633826,
+      "largest_travel_cells_per_step": 4.5085601806640625,
+      "mean_of_travel_cells_per_step": 3.26216037888856,
       "thinnest_wall_cells": 10.24,
       "steps_with_travel_above_thinnest_wall": 0,
-      "largest_cg_iterations": 14,
-      "mean_of_largest_cg_iterations": 10.995833333333334,
-      "largest_divergence": 0.0027008056640625,
+      "largest_cg_iterations": 15,
+      "mean_of_largest_cg_iterations": 12.529166666666667,
+      "largest_divergence": 0.0025787353515625,
       "unconverged_item_steps": 0,
       "largest_density_in_solid": 0.0,
       "all_finite": true,
-      "largest_density": 2.4337968826293945,
+      "largest_density": 2.60469126701355,
       "first_frame_smoke_touches_obstacle": [
         32,
         49,
         19,
         42,
         47,
+        23,
         20,
-        36,
-        43
+        17
       ],
       "scenes_where_smoke_never_touches": 0
     },
     "test_b": {
       "scenes": 8,
       "steps": 480,
-      "seconds": 40.08559790000072,
-      "item_steps_per_second": 95.79500372127245,
-      "largest_travel_cells_per_step": 4.371303405761719,
-      "mean_of_travel_cells_per_step": 3.361731623204425,
+      "seconds": 41.5417440479996,
+      "item_steps_per_second": 92.43713974943022,
+      "largest_travel_cells_per_step": 4.402220458984375,
+      "mean_of_travel_cells_per_step": 3.3849774779211734,
       "thinnest_wall_cells": 10.24,
       "steps_with_travel_above_thinnest_wall": 0,
-      "largest_cg_iterations": 13,
-      "mean_of_largest_cg_iterations": 11.560416666666667,
-      "largest_divergence": 0.00286102294921875,
+      "largest_cg_iterations": 15,
+      "mean_of_largest_cg_iterations": 12.602083333333333,
+      "largest_divergence": 0.00232696533203125,
       "unconverged_item_steps": 0,
       "largest_density_in_solid": 0.0,
       "all_finite": true,
-      "largest_density": 2.3844664096832275,
+      "largest_density": 1.6120390892028809,
       "first_frame_smoke_touches_obstacle": [
-        25,
+        21,
         37,
-        44,
-        22,
-        38,
-        18,
         45,
-        39
+        22,
+        58,
+        22,
+        30,
+        15
       ],
       "scenes_where_smoke_never_touches": 0
     },
     "train_top_corner": {
       "scenes": 8,
       "steps": 480,
-      "seconds": 38.17995556800088,
-      "item_steps_per_second": 100.57633496091218,
-      "largest_travel_cells_per_step": 6.6041717529296875,
-      "mean_of_travel_cells_per_step": 4.482638613713285,
+      "seconds": 40.152686901999914,
+      "item_steps_per_second": 95.6349449134558,
+      "largest_travel_cells_per_step": 6.535386352539063,
+      "mean_of_travel_cells_per_step": 4.380072791645303,
       "thinnest_wall_cells": 10.24,
       "steps_with_travel_above_thinnest_wall": 0,
-      "largest_cg_iterations": 13,
-      "mean_of_largest_cg_iterations": 10.51875,
-      "largest_divergence": 0.0035343170166015625,
+      "largest_cg_iterations": 15,
+      "mean_of_largest_cg_iterations": 11.691666666666666,
+      "largest_divergence": 0.0036773681640625,
       "unconverged_item_steps": 0,
       "largest_density_in_solid": 0.0,
       "all_finite": true,
-      "largest_density": 2.2158632278442383,
+      "largest_density": 1.5376461744308472,
       "first_frame_smoke_touches_obstacle": [
-        36,
+        37,
         34,
         19,
-        19,
-        29,
-        19,
-        36,
-        32
+        18,
+        28,
+        15,
+        33,
+        24
       ],
       "scenes_where_smoke_never_touches": 0
     },
     "test_c_low_corner": {
       "scenes": 8,
       "steps": 480,
-      "seconds": 35.60069155899873,
-      "item_steps_per_second": 107.86307321126657,
-      "largest_travel_cells_per_step": 1.31830078125,
-      "mean_of_travel_cells_per_step": 0.8679058493440098,
+      "seconds": 35.90099534199908,
+      "item_steps_per_second": 106.9608227688257,
+      "largest_travel_cells_per_step": 1.2458384704589844,
+      "mean_of_travel_cells_per_step": 0.8493862070928831,
       "thinnest_wall_cells": 10.24,
       "steps_with_travel_above_thinnest_wall": 0,
       "largest_cg_iterations": 12,
-      "mean_of_largest_cg_iterations": 9.783333333333333,
-      "largest_divergence": 0.0012450218200683594,
+      "mean_of_largest_cg_iterations": 10.129166666666666,
+      "largest_divergence": 0.001209259033203125,
       "unconverged_item_steps": 0,
       "largest_density_in_solid": 0.0,
       "all_finite": true,
-      "largest_density": 1.0054595470428467,
+      "largest_density": 1.0328930616378784,
       "first_frame_smoke_touches_obstacle": [
-        102,
-        32,
-        82,
-        63,
-        93,
-        83,
-        84,
-        -1
+        92,
+        75,
+        80,
+        72,
+        59,
+        79,
+        68,
+        76
       ],
-      "scenes_where_smoke_never_touches": 1
+      "scenes_where_smoke_never_touches": 0
     },
     "test_c_high_corner": {
       "scenes": 8,
       "steps": 480,
-      "seconds": 34.898581499999636,
-      "item_steps_per_second": 110.03312555841389,
-      "largest_travel_cells_per_step": 7.306564941406251,
-      "mean_of_travel_cells_per_step": 5.427776873069505,
+      "seconds": 38.40463226300017,
+      "item_steps_per_second": 99.9879382701325,
+      "largest_travel_cells_per_step": 7.323186645507812,
+      "mean_of_travel_cells_per_step": 5.79593584428976,
       "thinnest_wall_cells": 10.24,
       "steps_with_travel_above_thinnest_wall": 0,
-      "largest_cg_iterations": 10,
-      "mean_of_largest_cg_iterations": 9.020833333333334,
-      "largest_divergence": 0.00396728515625,
+      "largest_cg_iterations": 12,
+      "mean_of_largest_cg_iterations": 10.96875,
+      "largest_divergence": 0.004444122314453125,
       "unconverged_item_steps": 0,
       "largest_density_in_solid": 0.0,
       "all_finite": true,
-      "largest_density": 2.985020399093628,
+      "largest_density": 3.0797762870788574,
       "first_frame_smoke_touches_obstacle": [
-        17,
-        21,
-        20,
-        21,
+        14,
+        19,
+        27,
+        25,
+        27,
         10,
-        23,
-        15,
-        11
+        21,
+        8
+      ],
+      "scenes_where_smoke_never_touches": 0
+    },
+    "test_c_low_side": {
+      "scenes": 8,
+      "steps": 480,
+      "seconds": 35.98434041799919,
+      "item_steps_per_second": 106.7130856198562,
+      "largest_travel_cells_per_step": 2.1734869384765627,
+      "mean_of_travel_cells_per_step": 1.5526999333408507,
+      "thinnest_wall_cells": 10.24,
+      "steps_with_travel_above_thinnest_wall": 0,
+      "largest_cg_iterations": 12,
+      "mean_of_largest_cg_iterations": 9.49375,
+      "largest_divergence": 0.001800537109375,
+      "unconverged_item_steps": 0,
+      "largest_density_in_solid": 0.0,
+      "all_finite": true,
+      "largest_density": 1.2298860549926758,
+      "first_frame_smoke_touches_obstacle": [
+        45,
+        54,
+        52,
+        67,
+        40,
+        59,
+        71,
+        79
+      ],
+      "scenes_where_smoke_never_touches": 0
+    },
+    "test_c_high_side": {
+      "scenes": 8,
+      "steps": 480,
+      "seconds": 41.87784427299994,
+      "item_steps_per_second": 91.69526432562284,
+      "largest_travel_cells_per_step": 6.912175903320312,
+      "mean_of_travel_cells_per_step": 5.240080443880831,
+      "thinnest_wall_cells": 10.24,
+      "steps_with_travel_above_thinnest_wall": 0,
+      "largest_cg_iterations": 14,
+      "mean_of_largest_cg_iterations": 12.729166666666666,
+      "largest_divergence": 0.0044708251953125,
+      "unconverged_item_steps": 0,
+      "largest_density_in_solid": 0.0,
+      "all_finite": true,
+      "largest_density": 1.926861047744751,
+      "first_frame_smoke_touches_obstacle": [
+        18,
+        30,
+        22,
+        20,
+        22,
+        20,
+        30,
+        14
       ],
       "scenes_where_smoke_never_touches": 0
     }
