@@ -94,6 +94,7 @@ Each major decision, the alternatives and the reason. Status is **Default** for 
 - **Decision:** `test_converges_with_refinement` runs two cases, and requires the 128×128 error to be below 0.8 of the 64×64 error, which is stricter than the plan's "smaller than".
 - **Alternative:** the first version of the test, a hard-edged disc inflow run to `t=1`, which failed.
 - **Reason:** a table of errors over time pinned down the failure. A hard-edged disc is a different source on each grid, and from about `t=0.75` to `t=1`, depending on the advection scheme, its plume loses pointwise convergence. With a smooth source, the same solver converges through the whole window. The test was changed after seeing a failure, so the full table including the non-converging case is kept in `results/solver_check.json` and in `BUILD_LOG.md`. Task 3 should use smooth inflow edges for the same reason.
+- **Limit, added after review:** this decision covers the window the test asserts, not the window the project uses. Run to `t=3`, the hard inflow is reversed at `t=1` and `t=1.25`. The soft inflow narrows to a ratio of 0.877 at `t=2`, and is reversed at `t=2.5` and `t=2.75`. The planned primary horizon, 50 neural steps from frame 20, spans `t=0.8` to `t=2.8` at `dt=0.01`. The test is unchanged, since asserting grid order past these points would be asserting something false. Treat the 256×256 run past about `t=1` as one realisation of the flow, not as pointwise truth. `docs/PREREGISTRATION.md` (Task 4) has to allow for this, and the design's physical secondary metrics matter more as a result.
 
 ### B13: Pressure solve stops on true divergence relative to flow speed (2026-11-03)
 
@@ -112,3 +113,15 @@ Each major decision, the alternatives and the reason. Status is **Default** for 
   - Batch 16 was added to the speed measurement.
 - **Alternatives:** rebuild the faces from the cell-centred view at each step, and keep the measurements as one-off commands.
 - **Reason:** averaging to cell centres and back each step would blur the flow. Saved output and one regenerating command are required by `docs/DESIGN.md` section 6.5. The planned arguments are unchanged.
+
+### B15: Faces masked at the start of `step` (2026-11-03). Reverses an earlier removal
+
+- **Decision:** `step` masks the incoming faces with the current obstacle before advecting anything.
+- **Alternatives:** multiply the advected density by the fluid mask, which fixes density in solid cells but still carries smoke across a new wall (`test_new_wall_stops_smoke_on_its_first_step` fails on it). Or project at the start of the step, which also removes the divergence the mask creates, at the cost of a second pressure solve on steps where nothing changed, or of tracking obstacle changes.
+- **Reason:** this mask was removed during the build as having no observable effect, which was wrong. It has no effect only while the obstacle is unchanged. Without it, the first step after a change put density inside the new solid, on every `late_obstacle` scene and every demo edit reaching the solver. The rule that density in solid cells is 0 failed on that step. With masked faces, a solid cell traces back to itself, so it stays empty with no separate clearing. The cost: on that one step, advection uses a field with some divergence next to the new solid. The pressure solve at the end of the step removes it.
+
+### B16: A blown-up batch item is carried and reported, not raised or repaired (2026-11-03)
+
+- **Decision:** `_interpolate` keeps its indices in range for any coordinate, and a NaN coordinate yields NaN. A batch item with non-finite input stays non-finite, is reported with `converged=False`, and does not affect the other items. `_project_faces` no longer accepts an item with an infinite face as converged.
+- **Alternatives:** replace bad coordinates with 0, the plain reading of "sanitise", which lets a bad velocity stop reaching density (`test_bad_velocity_in_a_moving_flow_never_heals` fails on it). Or raise an error, which would lose a whole generation batch and leaves evaluation and demo to catch it.
+- **Reason:** review focus 1 in `docs/PLAN.md` requires a blown-up rollout to count as a failure. A crash takes down the process, and on a GPU disables the device until the process restarts. A repair could make a failure look like a finite result. Infinite coordinates are clamped to the edge, like any large value, and the infinite value still reaches the output through the lookups around it. Callers must check `last_solve.converged` or the fields, as they already had to.

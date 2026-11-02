@@ -33,18 +33,24 @@ Required to pass before any data is generated, all in `tests/physics/test_solver
 | `test_sealed_cavity_stays_finite` | A closed ring stays finite and converged, and nothing crosses it |
 | `test_fully_solid_domain_stays_finite` | All-zero output and no failure of the pressure solve |
 | `test_smoke_does_not_cross_a_thin_wall` | A one-cell wall across the box keeps all smoke below it |
-| `test_obstacle_change_mid_run_is_respected` | A late obstacle gets a new pressure setup, and its cells are cleared |
+| `test_obstacle_change_mid_run_is_respected` | A late obstacle gets a new pressure setup, and after exactly 1 step its cells hold no velocity or density |
+| `test_new_wall_stops_smoke_on_its_first_step` | Flow from before an obstacle change does not carry smoke through a new one-cell wall |
 | `test_batch_matches_single_runs` | Batched items match single runs, including iteration counts |
-| `test_non_finite_item_does_not_stall_or_poison_the_batch` | A NaN item uses no iterations and is reported, and the other item is unaffected |
+| `test_non_finite_item_does_not_stall_or_poison_the_batch` | In `project`, a NaN or infinite item uses no iterations, stays non-finite and is reported, and the other item is unaffected |
+| `test_infinite_face_is_not_reported_as_converged` | One infinite face, which also makes the tolerance infinite, is not accepted |
+| `test_non_finite_item_survives_step` | On GPU and CPU, over 3 batched steps, NaN or infinity in velocity, faces or density: no crash, item reported as not converged, the other item matches a single run, and the device still works |
+| `test_bad_velocity_in_a_moving_flow_never_heals` | NaN or infinity in `u` or `v` of a moving flow reaches density, and stays non-finite for 10 steps |
+| `test_huge_item_survives_step` | Velocity of `1e30` does not crash the solver or disturb the other item |
 | `test_iteration_limit_is_reported_as_not_converged` | `cg_max_iter` is respected and reported |
 | `test_pressure_solve_needs_few_iterations` | Below 60 iterations at both 64×64 and 256×256 |
 | `test_preconditioner_is_symmetric` | Required for conjugate gradients to be valid |
-| `test_steady_vortex_stays_centred` | A steady solution does not drift. Catches fields advected on the wrong lattice |
+| `test_steady_vortex_stays_centred` | A steady solution does not drift. Catches fields advected on the wrong lattice. A frozen velocity field also passes, so it says nothing about momentum advection |
+| `test_vortex_pair_carries_itself` | A vortex pair travels 0.6 to 1.1 of the point-vortex distance, along either axis, without drifting sideways. Fails if either velocity component is not advected |
 | `test_advection_follows_a_rotation_without_spiralling` | A rotating blob keeps its radius. Catches a first-order backtrace |
 | `test_thin_sheets_have_no_cell_scale_artefacts` | Laplacian-to-density ratio on a thin-sheet plume stays below 0.25 (`DECISIONS.md` B10) |
 | `test_smoke_matches_the_mass_budget` | Smoke in the box within 5% of inflow minus decay at `t=1.75` |
 
-A rendered 256×256 run, `results/figures/solver_check.png`, is also inspected by eye. `uv run python scripts/check_solver.py` regenerates it, along with the speed and convergence numbers.
+A rendered 256×256 run, `results/figures/solver_check.png`, is also inspected by eye. `uv run python scripts/check_solver.py` regenerates it, along with the speed, convergence and long-run divergence numbers.
 
 ## Data integrity (Tasks 3 and 4)
 

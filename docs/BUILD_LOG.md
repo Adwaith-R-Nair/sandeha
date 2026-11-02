@@ -123,23 +123,23 @@ First round, 13 mutants. Killed: rebuilding of the pressure setup removed, inflo
 
 Each survivor was dealt with:
 
-- The mask at the start of `step` was removed as code with no observable effect, since faces are masked again at the end of the step. `test_smoke_does_not_cross_a_thin_wall` tests the property directly.
+- The mask at the start of `step` was removed as code with no observable effect, since faces are masked again at the end of the step. `test_smoke_does_not_cross_a_thin_wall` tests the property directly. **This was wrong.** The mask has an effect on the first step after an obstacle changes, which no test looked at. It was restored after review (see Review fixes below, and B15).
 - The other three got new or stronger tests.
 
 Second round, 6 mutants, all killed: shared step size, first-order backtrace in `x` and in `y`, `u` and `v` each on the wrong lattice, and faces left unmasked by solids.
 
 ### Speed
 
-From `results/solver_check.json`. A plume with one obstacle, `dt=0.01`, timed over 100 steps after 100 warm-up steps. Peak GPU memory across the run: 144 MiB. Batch 16 was measured beyond the plan's 1 and 8, for use in sizing Task 4.
+From `results/solver_check.json`, regenerated at commit `2b2df8a` with a clean tree. A plume with one obstacle, `dt=0.01`, timed over 100 steps after 100 warm-up steps. Batch 16 was measured beyond the plan's 1 and 8, for use in sizing Task 4. Peak GPU memory across the whole script: 152 MiB. The largest divergence column covers only the timed window, steps 101 to 200. See "Divergence over a longer run" for what happens outside it.
 
 | Grid | Batch | Batch steps/s | Item steps/s | Mean CG iterations | Largest divergence | All converged |
 |---|---|---|---|---|---|---|
-| 256 | 1 | 20.3 | 20.3 | 8.0 | 0.00098 | yes |
-| 256 | 8 | 16.7 | 133.7 | 8.0 | 0.00098 | yes |
-| 256 | 16 | 12.0 | 192.0 | 8.0 | 0.00098 | yes |
-| 128 | 1 | 25.0 | 25.0 | 7.0 | 0.00055 | yes |
-| 128 | 8 | 25.1 | 201.0 | 7.0 | 0.00055 | yes |
-| 128 | 16 | 24.3 | 388.9 | 7.0 | 0.00055 | yes |
+| 256 | 1 | 19.8 | 19.8 | 8.0 | 0.00098 | yes |
+| 256 | 8 | 16.7 | 133.4 | 8.0 | 0.00098 | yes |
+| 256 | 16 | 11.9 | 190.2 | 8.0 | 0.00098 | yes |
+| 128 | 1 | 24.7 | 24.7 | 7.0 | 0.00055 | yes |
+| 128 | 8 | 23.6 | 188.4 | 7.0 | 0.00055 | yes |
+| 128 | 16 | 24.6 | 394.2 | 7.0 | 0.00055 | yes |
 
 Time per step changes little with grid size at batch 1. A profile showed low GPU use and most of the time in Python and tensor-operation overhead, so larger batches gain the most. Items in these batches are identical. Real scenes differ, and a batch waits for its slowest item, so Task 4 should measure its own throughput rather than rely on this table.
 
@@ -147,18 +147,58 @@ Time per step changes little with grid size at batch 1. A profile showed low GPU
 
 From `results/solver_check.json`. Error is the relative L2 difference in density against the 256×256 run, averaged down to the coarser grid. Time step is fixed.
 
-| Inflow | Time | 128 vs 256 | 64 vs 256 |
-|---|---|---|---|
-| soft | 0.25 | 0.0024 | 0.0058 |
-| soft | 0.5 | 0.0253 | 0.0680 |
-| soft | 0.75 | 0.0929 | 0.2134 |
-| soft | 1.0 | 0.1892 | 0.3769 |
-| hard | 0.25 | 0.0827 | 0.1384 |
-| hard | 0.5 | 0.1232 | 0.2192 |
-| hard | 0.75 | 0.3038 | 0.4193 |
-| hard | 1.0 | 0.4683 | 0.4317 |
+| Inflow | Time | 128 vs 256 | 64 vs 256 | Ratio |
+|---|---|---|---|---|
+| soft | 0.25 | 0.0024 | 0.0058 | 0.414 |
+| soft | 0.5 | 0.0253 | 0.0680 | 0.372 |
+| soft | 0.75 | 0.0929 | 0.2134 | 0.435 |
+| soft | 1 | 0.1892 | 0.3769 | 0.502 |
+| soft | 1.25 | 0.3243 | 0.5183 | 0.626 |
+| soft | 1.5 | 0.4264 | 0.5632 | 0.757 |
+| soft | 1.75 | 0.4826 | 0.6052 | 0.797 |
+| soft | 2 | 0.5670 | 0.6465 | 0.877 |
+| soft | 2.25 | 0.6639 | 0.6809 | 0.975 |
+| soft | 2.5 | 0.7157 | 0.7092 | 1.009 |
+| soft | 2.75 | 0.7263 | 0.7212 | 1.007 |
+| soft | 3 | 0.7287 | 0.7588 | 0.960 |
+| hard | 0.25 | 0.0827 | 0.1384 | 0.597 |
+| hard | 0.5 | 0.1232 | 0.2192 | 0.562 |
+| hard | 0.75 | 0.3038 | 0.4193 | 0.725 |
+| hard | 1 | 0.4683 | 0.4317 | 1.085 |
+| hard | 1.25 | 0.5125 | 0.4941 | 1.037 |
+| hard | 1.5 | 0.5600 | 0.5650 | 0.991 |
+| hard | 1.75 | 0.5821 | 0.6398 | 0.910 |
+| hard | 2 | 0.5912 | 0.6548 | 0.903 |
+| hard | 2.25 | 0.6488 | 0.6620 | 0.980 |
+| hard | 2.5 | 0.6320 | 0.6596 | 0.958 |
+| hard | 2.75 | 0.6661 | 0.6751 | 0.987 |
+| hard | 3 | 0.6804 | 0.6978 | 0.975 |
 
-128×128 is closer than 64×64 at every listed time, except for the hard-edged inflow at `t=1.0`. There, pointwise convergence is lost: the plume head has rolled up, and small position differences between fine structures dominate the error. The smooth inflow does not lose it within this window. This limit is expected for chaotic flow (`docs/DESIGN.md` section 6.3), and is not hidden by the test, which asserts each case only inside the window shown here to converge (B12).
+128×128 is clearly closer than 64×64 only up to a limit, and the ratio column shows the margin closing:
+
+- **Hard inflow:** the order is reversed at `t=1.0` and `t=1.25` (128 error above 64 error). From `t=1.5` the order returns, with ratios from 0.903 to 0.991, while both errors stay large.
+- **Soft inflow:** ordered through `t=2.25`, with the ratio rising from 0.502 at `t=1` to 0.877 at `t=2` and 0.975 at `t=2.25`. The order is reversed at `t=2.5` and `t=2.75`, and it is 0.960 at `t=3`.
+
+Once the plume head has rolled up, small position differences between fine structures dominate the error. This is expected for chaotic flow (`docs/DESIGN.md` section 6.3). The test asserts each case only inside the window shown here to converge (B12).
+
+**Limit on the reference.** The design's starting horizon of 50 neural steps is 200 solver steps, or 2 time units at `dt=0.01`. With the plan's start at frame 20, the window runs from `t=0.8` to `t=2.8`, which is well past the tested window (`t=1` for soft inflow) and into the range where grid order is lost in this plume. By then the 128×128 run differs from the 256×256 run by a relative error above 0.7. The 256×256 run was never compared with a finer grid, so its own pointwise error is unmeasured, and past about `t=1` it should be called a converged reference only in a statistical sense. Task 4 has to take this into account when fixing the horizon and metrics, and scene flows and `dt` may shift the numbers.
+
+### Divergence over a longer run
+
+From `long_run` in `results/solver_check.json`: the same 256×256 plume for 300 steps.
+
+`cg_tol` is relative to the fastest face, in net-flux units, so the limit in physical units is `cg_tol × fastest face × res`, and it grows with grid size and flow speed. On this run it reached 0.00394.
+
+| Measure | Value |
+|---|---|
+| Largest divergence, whole run | 0.00272 |
+| Largest divergence, steps 101 to 200 (the timed window above) | 0.00098 |
+| Steps above `1e-3` | 91 of 300 |
+| Every solve reported converged | yes |
+
+The plan's `1e-3` limit is set at 64×64, so this breaks no test. It does mean that a converged solve at 256×256 does not guarantee divergence below `1e-3`.
+
+
 
 ### Visual check
 
@@ -179,7 +219,56 @@ See `DECISIONS.md`: B10 to B14.
 - The independent phase check required by `docs/DESIGN.md` section 8 has not been done. The inspection above was done as part of this task.
 - Not exercised: determinism across separate processes, and across restarts. `test_deterministic` compares two runs in one process.
 - `SmokeSolver.last_solve` reports non-convergence but does not raise. Task 4 has to check it during generation.
+- Semi-Lagrangian advection can jump a thin wall when flow is fast enough. In a one-off check on a new one-cell wall at 64×64, with uniform flow through it, no smoke crossed at 3.2 cells per step, and smoke crossed at 6.4 and above. The 256×256 plume above peaks near 3.9 cells per step (`max_physical_limit` divided by `cg_tol`, times `dt`). Static walls and faster flows at this grid size were not measured. Task 3 should check that its obstacles and speeds stay clear of this, and thin demo brush strokes may show it.
 - Semi-Lagrangian advection is dissipative: a test vortex loses a visible part of its velocity within 100 steps at 64×64. This is accepted (B10), and the 256×256 reference is less affected than coarser grids, but it is a limit on how far the reference can be called truth.
+
+### Review fixes
+
+An independent review of Task 2 raised the items below. Each was reproduced at `3840702` before anything changed.
+
+| Item | Reproduced | Change |
+|---|---|---|
+| Density inside a new obstacle on its first step | Yes. 40 plume steps, then a box at `y` 0.1 to 0.3 at 64×64: largest density in solid 0.0887 after step 1, and 0 after step 2. The review measured 0.378 with its own box. The old test ran 2 steps before asserting, which hid it | Faces are masked at the start of `step` (B15). The test asserts after exactly 1 step |
+| A NaN or infinite state passed to `step` crashes | Yes. On GPU: `AcceleratorError: device-side assert triggered`, and an unrelated `torch.zeros(3)+1` on the GPU then raised the same error. On CPU: `RuntimeError: index ... out of bounds`. NaN or infinity only in density got through step 1 and crashed on step 2. The old test never called `step` | Lookup indices are kept in range and NaN carries through (B16). Batched `step` tests on GPU and CPU |
+| Velocity self-advection untested | Yes. With `new_u = u` and `new_v = v` in a scratch copy: 22 passed in 33.66s | `test_vortex_pair_carries_itself` |
+| 256×256 divergence understated | Yes. 91 of 300 steps above `1e-3`, peak 0.00272, all reported converged | Measured by `check_solver.py`, stated in "Divergence over a longer run" and `docs/LLD.md` |
+| Convergence limits recorded only up to `t=1` | Yes, as reported, and it goes further: soft inflow also loses grid order at `t=2.5` and `t=2.75`, inside the planned window | `check_solver.py` runs to `t=3`. Table and limit stated above, and B12 updated |
+| Cell-centred divergence has a large floor | Yes. 48.6 against 0.00085 on the faces of one 256×256 state, and 36.5 against 0.00012 for a random field at 64×64 | Docstring and `docs/LLD.md` state it, with the figure for 128×128 targets (see below) |
+
+Found while fixing these, and not in the review:
+
+- **An infinite face was reported as converged.** One infinite face also made the tolerance infinite, and `inf <= inf` passed. `SmokeSolver.project` reported `converged=True`. Now reported as not converged (B16).
+- **`test_smoke_does_not_cross_a_thin_wall` skipped a row.** Its "above" region started one row too high, because `y > 0.5 + 1.5/64` excludes the row just above the wall. It now covers everything that is neither wall nor below. The solver passes the stronger form.
+- **Floor at training resolution.** The 256×256 state's velocity averaged down to 128×128 has a cell-centred divergence of 65.9 at most and 1.26 RMS, on true data. Task 5's penalty works on this kind of field.
+
+Test runs for these fixes:
+
+| Step | Result |
+|---|---|
+| New late-obstacle and wall tests against the old solver | Both failed: density in solid 0.0887, and density above the wall 0.9191 |
+| New infinite-face test against the old solver | Failed: `converged` was True |
+| New `step` tests on CPU against the old solver | 6 failed, each `RuntimeError: index ... out of bounds` |
+| New `step` test on GPU against the old solver, run alone so as not to disable the GPU for other tests | Failed, with the device-side assert |
+| New vortex pair tests against the old solver | Passed, as expected, since the old solver does advect velocity. They were seen failing on mutants, below |
+| After the fixes, `uv run pytest tests/physics/test_solver.py` | 44 passed |
+| Full suite, `uv run pytest`, at `2b2df8a` | 71 passed |
+
+Mutants, run against a scratch copy of the fixed solver, each failing the tests named:
+
+| Mutant | Tests that fail |
+|---|---|
+| `new_u = u` and `new_v = v` | Both vortex pair cases, and nothing else |
+| `new_v = v` | Both vortex pair cases, and nothing else |
+| `new_u = u` | Both vortex pair cases, the thin-sheet test and the mass budget test |
+| Start-of-step mask removed | Late-obstacle test and new wall test |
+| Mask `new_density` in place of the faces, the review's other option | New wall test only |
+| Lookup index left unguarded, run on CPU cases only, since on GPU it disables the device for the rest of the run | All 6 CPU `step` tests |
+| NaN coordinates replaced with 0, so a blown-up item partly heals | All 4 `test_bad_velocity_in_a_moving_flow_never_heals` cases |
+| Infinite-speed check removed | Infinite-face test |
+
+The vortex pair covers 75% of the point-vortex distance at 64×64 (0.149 against 0.199). Peak vorticity falls from 85.9 to 19.9 over the same 50 steps, and from 95.5 to 25.4 at 128×128. These are from one-off runs and are not saved. Dissipation is heavy here: the core spans about five cells at 128×128 and turns about half a radian a step, at half the peak vorticity. The share due to each was not separated. This adds to the open item on semi-Lagrangian dissipation.
+
+The solver changes do not affect a run with a fixed obstacle. Every convergence value through `t=1` in `results/solver_check.json` matches its value before the fixes, and `results/figures/solver_check.png` regenerated byte-identical, so its earlier inspection stands. Speed changed little: 19.8 steps per second against 20.3 before at 256×256, batch 1, and 24.7 against 25.0 at 128×128, batch 1. Each is one measurement, so the change is not separated from run-to-run spread.
 
 ### Next
 
