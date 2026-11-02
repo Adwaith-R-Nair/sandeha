@@ -12,7 +12,7 @@
 
 - Git author `Adwaith R Nair`, email `adwaith.r.nair189@gmail.com`, set in repo config. Commit messages carry no co-author or tool-attribution lines, enforced by a `commit-msg` hook.
 - Docs state nothing about how the code was authored. Tooling config directories and files stay untracked.
-- GitHub repo `Adwaith-R-Nair/sandeha`, private. Push at the end of every phase.
+- GitHub repo `Adwaith-R-Nair/sandeha`, public. Push at the end of every phase.
 - Never commit datasets or checkpoints. Weights go in a GitHub Release.
 - GPU memory 6 GB. Reference grid 256×256, AI grid 128×128, AI step 4 reference solver steps, ensemble of 5, public-track ensemble of 3.
 - Test splits are read only by final evaluation, and tuning uses validation only.
@@ -77,7 +77,7 @@ docs/                    DESIGN PLAN PRD HLD LLD BUILD_LOG DECISIONS TEST_PLAN R
 - [ ] Write `tests/test_env.py::test_cuda_runs_a_matmul`: on `cuda`, multiply two 1024×1024 matrices and assert the result is finite. Run it and see it pass.
 - [ ] `scripts/long_job.sh <name> <cmd...>`: exit 3 with a message if mains power is offline, otherwise run under `systemd-inhibit --what=sleep:idle:handle-lid-switch` and log to `runs/<name>.log` and `runs/jobs.log`.
 - [ ] Write the PRD, HLD and LLD from the design, including an HLD diagram, and `TEST_PLAN.md`. Start `BUILD_LOG.md` and `DECISIONS.md`, with the design's defaults recorded as decisions.
-- [ ] Commit. Create the private GitHub repo and push.
+- [ ] Commit. Create the public GitHub repo and push.
 
 ---
 

@@ -2,7 +2,7 @@
 
 **Owner:** Adwaith R Nair
 **Date:** 2026-11-02
-**Status:** Awaiting owner approval
+**Status:** Approved by owner, 2026-11-02
 **Context:** Deep learning course project, college. Submission on 2026-11-05. The owner is not yet sure whether a real dataset is required, so the project includes a public-dataset track (section 4).
 
 Decisions are marked **[Owner]** when Adwaith specified them and **[Default]** when they are defaults open to change.
@@ -72,7 +72,7 @@ This is a small 2D simulator. It will not change aircraft design or weather fore
 | Time | Submission 2026-11-05. Build runs overnight, and may overrun **[Owner]**. Code and experiments freeze by the morning of 2026-11-04, leaving the owner a full day to learn the project and rehearse **[Default]**. |
 | Data | Main experiment data is generated locally. Public data only where it needs no sign-up (section 4). |
 | Commit identity | `git config user.name "Adwaith R Nair"`, email `adwaith.r.nair189@gmail.com`, set in this repo. Commits carry no co-author or tool-attribution lines **[Owner]**. |
-| Repo | Local at `~/Coding/Projects/sandeha`. GitHub repo `Adwaith-R-Nair/sandeha`, **private** until Adwaith chooses to publish, so classmates can't copy it before submission. **[Default]** |
+| Repo | Local at `~/Coding/Projects/sandeha`. GitHub repo `Adwaith-R-Nair/sandeha`, **public** **[Owner]** |
 | Size limits | Never commit datasets or checkpoints to git. Final weights go in a GitHub Release, so the demo can be reproduced. **[Default]** |
 
 Before the overnight run Adwaith must: reboot (one desktop process still has old driver files loaded), keep the laptop plugged in **[Owner]**, and set the lid and sleep settings so it stays awake. Long jobs should also run under `systemd-inhibit`.
