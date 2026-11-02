@@ -228,6 +228,16 @@ def test_inflow_sits_below_obstacles(split):
 
 
 @pytest.mark.parametrize("split", SPLITS)
+def test_most_scenes_put_an_obstacle_in_a_plume_path(split):
+    """A plume that misses every shape makes a scene easy, whichever family the shapes are."""
+    hits = []
+    for scene in sample_many(split):
+        columns = (scene.inflow > 0).any(axis=0)
+        hits.append(scene.obstacle[:, columns].any())
+    assert np.mean(hits) > 0.85
+
+
+@pytest.mark.parametrize("split", SPLITS)
 def test_obstacles_are_thick_enough_not_to_be_jumped(split):
     """Fast smoke can jump a thin wall, so no solid part may be thinner than the limit."""
     res = 256
@@ -359,8 +369,10 @@ def test_most_of_the_box_stays_fluid(split):
 
 @pytest.mark.parametrize("split", LATE_SPLITS)
 def test_a_third_have_a_late_obstacle(split):
-    share = np.mean([s.late_obstacle is not None for s in sample_many(split, count=400)])
-    assert 0.28 < share < 0.39
+    count = 1000
+    share = np.mean([s.late_obstacle is not None for s in sample_many(split, count=count)])
+    # Four standard deviations of the binomial, so that a change of seed can't fail it by chance.
+    assert abs(share - 1 / 3) < 4 * np.sqrt(1 / 3 * 2 / 3 / count)
 
 
 @pytest.mark.parametrize("split", ["test_b", "test_c"])

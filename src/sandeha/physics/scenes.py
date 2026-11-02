@@ -40,7 +40,8 @@ LATE_FRAMES = (20, 90)  # Inclusive. Frames are neural steps of the planned 121-
 
 _OBSTACLE_COUNT = (1, 3)  # Inclusive.
 _OBSTACLE_X = (0.15, 0.85)
-_OBSTACLE_Y = (0.3, 0.85)  # Centres. Above the sources, so the plume meets them.
+_OBSTACLE_Y = (0.3, 0.85)  # Centres. Above the sources.
+_IN_PATH_REACH = 0.08  # The first obstacle's centre is this close to a source, along x.
 _SOURCE_COUNT = (1, 2)  # Inclusive.
 _SOURCE_X = (0.12, 0.88)
 _SOURCE_Y = (0.08, 0.16)
@@ -178,12 +179,13 @@ _BUILDERS: dict[str, Callable[[np.random.Generator, np.ndarray, np.ndarray], np.
 
 def _sample_sources(
     rng: np.random.Generator, x: np.ndarray, y: np.ndarray, strength: float
-) -> tuple[np.ndarray, np.ndarray]:
+) -> tuple[np.ndarray, np.ndarray, list[float]]:
     """Smooth sources that don't overlap, peaking at exactly ``strength``.
 
-    Returns the inflow and the area obstacles must keep out of. The edges follow a raised
-    cosine rather than a step, because a hard edge is a different source on each grid
-    (``docs/DECISIONS.md`` B12). The support is finite, so a source can be kept wholly clear.
+    Returns the inflow, the area obstacles must keep out of, and each source's x. The edges
+    follow a raised cosine rather than a step, because a hard edge is a different source on
+    each grid (``docs/DECISIONS.md`` B12). The support is finite, so a source can be kept
+    wholly clear.
     """
     count = int(rng.integers(_SOURCE_COUNT[0], _SOURCE_COUNT[1] + 1))
     placed: list[tuple[float, float, float]] = []
@@ -201,7 +203,7 @@ def _sample_sources(
         # The peak falls between cells, so scale it to reach the strength exactly.
         inflow += (bump / bump.max() * strength).astype(np.float32)
         keep_out |= distance < radius + _CLEARANCE
-    return inflow, keep_out
+    return inflow, keep_out, [cx for cx, _, _ in placed]
 
 
 def _place_shape(
@@ -211,11 +213,12 @@ def _place_shape(
     y: np.ndarray,
     keep_out: np.ndarray,
     existing: np.ndarray | None = None,
+    x_range: tuple[float, float] = _OBSTACLE_X,
 ) -> np.ndarray:
     """A random shape clear of ``keep_out``, and mostly new if ``existing`` is given."""
     for _ in range(_POSE_ATTEMPTS):
         family = families[int(rng.integers(len(families)))]
-        cx, cy = rng.uniform(*_OBSTACLE_X), rng.uniform(*_OBSTACLE_Y)
+        cx, cy = rng.uniform(*x_range), rng.uniform(*_OBSTACLE_Y)
         shape = _BUILDERS[family](rng, x - cx, y - cy)
         if not shape.any() or (shape & keep_out).any():
             continue
@@ -270,11 +273,15 @@ def sample_scene(rng: np.random.Generator, res: int, split: str) -> Scene:
     # towards particular late obstacles.
     for _ in range(_SCENE_ATTEMPTS):
         buoyancy, strength = _sample_physics(rng, split)
-        inflow, keep_out = _sample_sources(rng, x, y, strength)
+        inflow, keep_out, source_xs = _sample_sources(rng, x, y, strength)
         keep_out |= box_margin
 
-        obstacle = np.zeros((res, res), dtype=bool)
-        for _ in range(int(rng.integers(_OBSTACLE_COUNT[0], _OBSTACLE_COUNT[1] + 1))):
+        # The first shape goes in a plume's path. A plume that misses every shape makes a
+        # scene easy, and in test_b would hide the unseen geometry from the model.
+        source_x = source_xs[int(rng.integers(len(source_xs)))]
+        in_path = (source_x - _IN_PATH_REACH, source_x + _IN_PATH_REACH)
+        obstacle = _place_shape(rng, families, x, y, keep_out, x_range=in_path)
+        for _ in range(int(rng.integers(_OBSTACLE_COUNT[0], _OBSTACLE_COUNT[1] + 1)) - 1):
             obstacle |= _place_shape(rng, families, x, y, keep_out)
 
         late_obstacle = None
