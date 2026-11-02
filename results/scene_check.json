@@ -1,0 +1,294 @@
+{
+  "git": {
+    "head": "d87039915b90d24d80ebcd491ce37b84a5a101be",
+    "working_tree_changed": false
+  },
+  "device": "NVIDIA GeForce RTX 3060 Laptop GPU",
+  "settings": {
+    "res": 256,
+    "dt": 0.01,
+    "steps_per_frame": 4,
+    "frames": 121,
+    "batch": 8,
+    "seed": 20261103,
+    "touch_density": 0.01,
+    "min_thickness": 0.04
+  },
+  "family_area_fraction": {
+    "circle": {
+      "mean": 0.033306477864583336,
+      "min": 0.01116943359375,
+      "max": 0.06134033203125
+    },
+    "rectangle": {
+      "mean": 0.0309527587890625,
+      "min": 0.01922607421875,
+      "max": 0.047271728515625
+    },
+    "wall": {
+      "mean": 0.023881734212239582,
+      "min": 0.012542724609375,
+      "max": 0.040985107421875
+    },
+    "star": {
+      "mean": 0.03305379231770833,
+      "min": 0.02001953125,
+      "max": 0.050506591796875
+    },
+    "letter": {
+      "mean": 0.03199208577473958,
+      "min": 0.0145721435546875,
+      "max": 0.059906005859375
+    },
+    "blob": {
+      "mean": 0.03057835896809896,
+      "min": 0.016143798828125,
+      "max": 0.0485992431640625
+    }
+  },
+  "splits": {
+    "train": {
+      "scenes": 200,
+      "seconds_per_scene": 0.012526087030000781,
+      "solid_fraction": {
+        "mean": 0.06601715087890625,
+        "min": 0.01397705078125,
+        "max": 0.1490020751953125
+      },
+      "late_share": 0.295,
+      "buoyancy": {
+        "mean": 1.9925921250380452,
+        "min": 1.002253453761511,
+        "max": 2.9968238402282
+      },
+      "inflow_strength": {
+        "mean": 4.820808846950531,
+        "min": 3.0039165019989014,
+        "max": 6.996109962463379
+      }
+    },
+    "val": {
+      "scenes": 200,
+      "seconds_per_scene": 0.013611165965003238,
+      "solid_fraction": {
+        "mean": 0.06543777465820312,
+        "min": 0.0120849609375,
+        "max": 0.1598052978515625
+      },
+      "late_share": 0.375,
+      "buoyancy": {
+        "mean": 1.966763742244259,
+        "min": 1.0236320818407607,
+        "max": 2.99183511813834
+      },
+      "inflow_strength": {
+        "mean": 4.888517916202545,
+        "min": 3.002732038497925,
+        "max": 6.9954400062561035
+      }
+    },
+    "test_a": {
+      "scenes": 200,
+      "seconds_per_scene": 0.01252874996999708,
+      "solid_fraction": {
+        "mean": 0.07139045715332032,
+        "min": 0.0121917724609375,
+        "max": 0.1496124267578125
+      },
+      "late_share": 0.405,
+      "buoyancy": {
+        "mean": 2.0785689422953477,
+        "min": 1.032787380337869,
+        "max": 2.9992539854520395
+      },
+      "inflow_strength": {
+        "mean": 5.126391808986664,
+        "min": 3.0283801555633545,
+        "max": 6.99298620223999
+      }
+    },
+    "test_b": {
+      "scenes": 200,
+      "seconds_per_scene": 0.06092567340499954,
+      "solid_fraction": {
+        "mean": 0.06155548095703125,
+        "min": 0.0169677734375,
+        "max": 0.1253204345703125
+      },
+      "late_share": 0.0,
+      "buoyancy": {
+        "mean": 2.0134062502223107,
+        "min": 1.0031960853573803,
+        "max": 2.997454995403676
+      },
+      "inflow_strength": {
+        "mean": 4.946741038560868,
+        "min": 3.0295190811157227,
+        "max": 6.991209030151367
+      }
+    },
+    "test_c": {
+      "scenes": 200,
+      "seconds_per_scene": 0.011902627555000435,
+      "solid_fraction": {
+        "mean": 0.05370529174804688,
+        "min": 0.012451171875,
+        "max": 0.1151580810546875
+      },
+      "late_share": 0.0,
+      "buoyancy": {
+        "mean": 2.3852370291671816,
+        "min": 0.40317496330307145,
+        "max": 4.488398476644953
+      },
+      "inflow_strength": {
+        "mean": 5.479028975367546,
+        "min": 1.5060207843780518,
+        "max": 9.972630500793457
+      }
+    }
+  },
+  "runs": {
+    "train": {
+      "scenes": 8,
+      "steps": 480,
+      "seconds": 39.17236825600048,
+      "item_steps_per_second": 98.02828296989124,
+      "largest_travel_cells_per_step": 4.0966729736328125,
+      "mean_of_travel_cells_per_step": 3.2773686823916317,
+      "thinnest_wall_cells": 10.24,
+      "steps_with_travel_above_thinnest_wall": 0,
+      "largest_cg_iterations": 14,
+      "mean_of_largest_cg_iterations": 10.995833333333334,
+      "largest_divergence": 0.0027008056640625,
+      "unconverged_item_steps": 0,
+      "largest_density_in_solid": 0.0,
+      "all_finite": true,
+      "largest_density": 2.4337968826293945,
+      "first_frame_smoke_touches_obstacle": [
+        32,
+        49,
+        19,
+        42,
+        47,
+        20,
+        36,
+        43
+      ],
+      "scenes_where_smoke_never_touches": 0
+    },
+    "test_b": {
+      "scenes": 8,
+      "steps": 480,
+      "seconds": 40.08559790000072,
+      "item_steps_per_second": 95.79500372127245,
+      "largest_travel_cells_per_step": 4.371303405761719,
+      "mean_of_travel_cells_per_step": 3.361731623204425,
+      "thinnest_wall_cells": 10.24,
+      "steps_with_travel_above_thinnest_wall": 0,
+      "largest_cg_iterations": 13,
+      "mean_of_largest_cg_iterations": 11.560416666666667,
+      "largest_divergence": 0.00286102294921875,
+      "unconverged_item_steps": 0,
+      "largest_density_in_solid": 0.0,
+      "all_finite": true,
+      "largest_density": 2.3844664096832275,
+      "first_frame_smoke_touches_obstacle": [
+        25,
+        37,
+        44,
+        22,
+        38,
+        18,
+        45,
+        39
+      ],
+      "scenes_where_smoke_never_touches": 0
+    },
+    "train_top_corner": {
+      "scenes": 8,
+      "steps": 480,
+      "seconds": 38.17995556800088,
+      "item_steps_per_second": 100.57633496091218,
+      "largest_travel_cells_per_step": 6.6041717529296875,
+      "mean_of_travel_cells_per_step": 4.482638613713285,
+      "thinnest_wall_cells": 10.24,
+      "steps_with_travel_above_thinnest_wall": 0,
+      "largest_cg_iterations": 13,
+      "mean_of_largest_cg_iterations": 10.51875,
+      "largest_divergence": 0.0035343170166015625,
+      "unconverged_item_steps": 0,
+      "largest_density_in_solid": 0.0,
+      "all_finite": true,
+      "largest_density": 2.2158632278442383,
+      "first_frame_smoke_touches_obstacle": [
+        36,
+        34,
+        19,
+        19,
+        29,
+        19,
+        36,
+        32
+      ],
+      "scenes_where_smoke_never_touches": 0
+    },
+    "test_c_low_corner": {
+      "scenes": 8,
+      "steps": 480,
+      "seconds": 35.60069155899873,
+      "item_steps_per_second": 107.86307321126657,
+      "largest_travel_cells_per_step": 1.31830078125,
+      "mean_of_travel_cells_per_step": 0.8679058493440098,
+      "thinnest_wall_cells": 10.24,
+      "steps_with_travel_above_thinnest_wall": 0,
+      "largest_cg_iterations": 12,
+      "mean_of_largest_cg_iterations": 9.783333333333333,
+      "largest_divergence": 0.0012450218200683594,
+      "unconverged_item_steps": 0,
+      "largest_density_in_solid": 0.0,
+      "all_finite": true,
+      "largest_density": 1.0054595470428467,
+      "first_frame_smoke_touches_obstacle": [
+        102,
+        32,
+        82,
+        63,
+        93,
+        83,
+        84,
+        -1
+      ],
+      "scenes_where_smoke_never_touches": 1
+    },
+    "test_c_high_corner": {
+      "scenes": 8,
+      "steps": 480,
+      "seconds": 34.898581499999636,
+      "item_steps_per_second": 110.03312555841389,
+      "largest_travel_cells_per_step": 7.306564941406251,
+      "mean_of_travel_cells_per_step": 5.427776873069505,
+      "thinnest_wall_cells": 10.24,
+      "steps_with_travel_above_thinnest_wall": 0,
+      "largest_cg_iterations": 10,
+      "mean_of_largest_cg_iterations": 9.020833333333334,
+      "largest_divergence": 0.00396728515625,
+      "unconverged_item_steps": 0,
+      "largest_density_in_solid": 0.0,
+      "all_finite": true,
+      "largest_density": 2.985020399093628,
+      "first_frame_smoke_touches_obstacle": [
+        17,
+        21,
+        20,
+        21,
+        10,
+        23,
+        15,
+        11
+      ],
+      "scenes_where_smoke_never_touches": 0
+    }
+  },
+  "peak_gpu_memory_mib": 80.2421875
+}

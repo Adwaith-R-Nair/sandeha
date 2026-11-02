@@ -125,3 +125,33 @@ Each major decision, the alternatives and the reason. Status is **Default** for 
 - **Decision:** `_interpolate` keeps its indices in range for any coordinate, and a NaN coordinate yields NaN. A batch item with non-finite input stays non-finite, is reported with `converged=False`, and does not affect the other items. `_project_faces` no longer accepts an item with an infinite face as converged.
 - **Alternatives:** replace bad coordinates with 0, the plain reading of "sanitise", which lets a bad velocity stop reaching density (`test_bad_velocity_in_a_moving_flow_never_heals` fails on it). Or raise an error, which would lose a whole generation batch and leaves evaluation and demo to catch it.
 - **Reason:** review focus 1 in `docs/PLAN.md` requires a blown-up rollout to count as a failure. A crash takes down the process, and on a GPU disables the device until the process restarts. A repair could make a failure look like a finite result. Infinite coordinates are clamped to the edge, like any large value, and the infinite value still reaches the output through the lookups around it. Callers must check `last_solve.converged` or the fields, as they already had to.
+
+### B17: Each unfamiliar test set changes one thing (2026-11-03)
+
+- **Decision:**
+  - `test_b` uses unseen shapes with training physics.
+  - `test_c` uses training shapes, with buoyancy and inflow strength both outside the training ranges. Each falls low or high independently, with a gap between the ranges.
+  - Neither has late obstacles.
+  - One inflow strength applies per scene, and the inflow's peak is exactly that value.
+- **Alternatives:** a late obstacle in `test_b` and `test_c`, or only one physics quantity out of range per `test_c` scene.
+- **Reason:** a rise in doubt on `test_b` or `test_c` should have one explanation. The plan requires late obstacles only in `train`, `val` and `test_a`, and leaves the other two open.
+- **Limit:** the values are chosen around the solver checks' buoyancy of 2 and strength of 5. `test_c` pairs each range's low or high side independently, so a quarter of its scenes are slow on both counts: see the Task 3 entry in `BUILD_LOG.md`.
+
+### B18: Limits on scene geometry (2026-11-03)
+
+- **Decision:**
+  - `MIN_THICKNESS` is 0.04, or 10.24 cells at 256×256.
+  - Stars and blobs are polygons grown by half of that, which also rounds their tips.
+  - Letters are thick strokes, and only letters with no closed counter are used.
+  - Solids keep 0.02 clear of sources and box walls.
+  - A scene that seals a source away from the top row is redrawn whole.
+  - Source edges follow a raised cosine, which has finite support, rather than a Gaussian.
+- **Alternatives:** thin walls limited only by flow speed, a Gaussian source as in the solver checks, or letters such as A and O.
+- **Reason:** semi-Lagrangian advection can carry smoke across a wall thinner than one step's travel. A Gaussian has no edge, so "inflow cells are not solid" could not hold exactly. A closed counter is a pocket that smoke can never enter.
+
+### B19: Shape sizes balanced, and the first obstacle placed in a plume's path. Both changed after measuring (2026-11-03)
+
+- **Decision:** star, letter and blob sizes were reduced so that unseen families cover the same mean area as training families. The first obstacle's centre is drawn within 0.08 of a source along x. Others stay uniform across the placement range.
+- **Alternatives:** the first sizes, and uniform placement of every obstacle.
+- **Reason:** unseen families first covered about 42% more area than training ones, so doubt on `test_b` could have risen because more of the box was solid. With uniform placement, smoke in 3 of 8 `test_b` check scenes touched an obstacle only after frame 70, the end of the planned window, or never. Such a scene shows the model nothing of the unseen geometry, which would understate doubt on the set built to measure it. Both changes use geometry alone. No data or model existed at the time.
+- **Cost:** with the first obstacle always near a source, scenes where the plume rises freely past all shapes are rarer in every split, including training.

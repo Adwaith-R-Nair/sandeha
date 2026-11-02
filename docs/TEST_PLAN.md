@@ -56,6 +56,26 @@ A rendered 256×256 run, `results/figures/solver_check.png`, is also inspected b
 
 Shape families and physics ranges match each split. Test splits refuse to open without `final_eval`, tampered files fail the checksum, seeds are disjoint between splits, an interrupted generation resumes identically, and the normaliser uses train only. Sample scenes from each split are rendered and checked for zero NaNs before use.
 
+Scene checks, in `tests/physics/test_scenes.py`:
+
+| Test | What it establishes |
+|---|---|
+| `test_train_never_uses_unseen_shapes`, `test_test_b_only_uses_unseen_shapes` | Records which families the sampler really draws, including rejected attempts, and requires exactly the allowed set |
+| `test_families_really_are_different_shapes` | Each family's overlap with a disc of equal area. Catches a builder that draws the wrong thing |
+| `test_unseen_families_are_not_simply_larger` | Unseen families cover the same area as training families, within 10% on average |
+| `test_test_c_outside_train_ranges`, `test_test_c_covers_both_sides_of_both_ranges_in_every_pairing`, `test_other_splits_stay_inside_train_ranges` | Physics ranges per split, with all four low and high pairings in `test_c` |
+| `test_inflow_not_blocked`, `test_obstacles_keep_off_sources_even_when_placed_right_on_them` | Sources stay clear, including when placement is forced onto them |
+| `test_inflow_edges_are_smooth` | No hard source edges (`DECISIONS.md` B12) |
+| `test_inflow_sits_below_obstacles` | Catches a flipped axis |
+| `test_most_scenes_put_an_obstacle_in_a_plume_path` | More than 85% of scenes have an obstacle above a source |
+| `test_obstacles_are_thick_enough_not_to_be_jumped`, `test_thickness_check_*` | No solid part is thinner than about 9 cells at 256×256, and the check itself detects thin walls and spikes |
+| `test_smoke_always_has_a_way_up`, `test_sealed_draws_are_thrown_away`, `test_way_up_*`, `test_sampler_*` | A plume is never sealed in, judged with the late obstacle in place |
+| `test_a_third_have_a_late_obstacle`, `test_no_late_obstacle_in_the_unfamiliar_splits`, `test_late_obstacle_is_valid_when_present` | Late obstacles per split, with a binomial limit on the share |
+| `test_sampling_is_seeded`, `test_sampling_is_the_same_in_a_new_process` | Determinism within a process and across processes with different hash seeds |
+| `test_scenes_run_through_the_solver` | Batched scenes from each split stay finite and converged on the GPU, with a late obstacle applied |
+
+`uv run python scripts/check_scenes.py` runs 40 scenes for a full 480 solver steps and renders `results/figures/scene_check.png` and `scene_check_flow.png`, which are inspected by eye.
+
 ## Training (Task 5)
 
 Model output shapes, solid cells forced to zero, zero divergence for uniform flow, overfitting one batch by at least 10×, atomic checkpoints under interruption, resume restoring optimiser and RNG state, and peak GPU memory below 5.5 GB for U-Net at batch 16.

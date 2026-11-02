@@ -86,7 +86,23 @@ class Scene:
 def sample_scene(rng: np.random.Generator, res: int, split: str) -> Scene: ...
 ```
 
-`split` is one of `train val test_a test_b test_c`.
+`split` is one of `train val test_a test_b test_c`. From `late_frame` on, the solid is `obstacle | late_obstacle`. The inflow's peak is the scene's inflow strength.
+
+| Split | Shape families | Buoyancy and inflow strength | Late obstacle |
+|---|---|---|---|
+| `train`, `val`, `test_a` | circle, rectangle, wall | Inside the training ranges, 1 to 3 and 3 to 7 | In a third of scenes, at frame 20 to 90 |
+| `test_b` | star, letter, blob | Inside the training ranges | None |
+| `test_c` | circle, rectangle, wall | Both outside: buoyancy 0.4 to 0.8 or 3.5 to 4.5, strength 1.5 to 2.5 or 8 to 10 | None |
+
+Rules that hold in every split:
+
+- Each scene has 1 or 2 sources with raised-cosine edges, and 1 to 3 obstacles.
+- The first obstacle's centre is within 0.08 of a source along x, so a plume meets it.
+- No solid part is thinner than `MIN_THICKNESS`, 0.04 of the domain.
+- Solids keep 0.02 clear of sources and box walls.
+- A scene in which any source cell can't reach the top row through fluid, with the late obstacle in place, is redrawn.
+
+`uv run python scripts/check_scenes.py` writes `results/scene_check.json` and two figures. See `DECISIONS.md` B17 to B19.
 
 ## Data
 
