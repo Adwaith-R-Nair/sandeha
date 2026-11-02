@@ -50,9 +50,43 @@ See `DECISIONS.md`: B2 (anchored `.gitignore`), B3 (local tooling excludes), B5 
 
 ### Open items
 
-- **Not done: private GitHub repo and first push.** `gh repo create Adwaith-R-Nair/sandeha --private --source=. --remote=origin --push` was refused by a permission check on the build machine before it ran, and the push was not retried another way. The work exists only in the local repo until the owner runs that command or allows it. The end-of-phase push rule is unmet until then.
-- `docs/DESIGN.md` still reads "Status: Awaiting owner approval". The owner has since approved the build, and the status line was left for the owner to change.
 - The design asks for a reboot before the overnight run, because one desktop process still had old driver files loaded. This task did not reboot. The GPU test passed without one.
+
+### Review fixes
+
+An independent review of Task 1 raised the items below. Each wrapper and hook item was reproduced before it was changed, using a scratch copy of the wrapper and the real `systemd-inhibit`.
+
+| Item | Reproduced | Change |
+|---|---|---|
+| Test did not prove the job runs under the inhibitor | Yes, by mutant after the fix: running the job outside the inhibitor now fails 3 tests | The test also asserts that the job command is in the inhibitor's arguments |
+| Job killed by a signal logged as `exit=1` | Yes: `bash terminated by signal TERM`, wrapper exit 1 | Real status recorded: 143 for SIGTERM, 137 for SIGKILL (B8) |
+| Name `jobs` wrote job output into `runs/jobs.log` | Yes: `collide` appeared between `START` and `END` | Name reserved, exit 2 |
+| SIGTERM to the wrapper left the job running with no `END` line | Yes: the job's marker file appeared after the wrapper exited | Signal forwarded to the job's process group (B8) |
+| Hook accepted "Assisted by" plus an unlisted tool name | Yes: exit 0 | Pattern widened (B9). Attribution samples exit 1. Messages with a conventional subject and no attribution, including one about a brush cursor, exit 0. Subject rules were added to the hook separately by `532ac37`, and earlier commits are not rewritten |
+| `docs/DESIGN.md` status line out of date | Fixed by the owner in `8fb4453` before this work reached it | None |
+| GitHub repo missing and no push | Was true when the review ran. The repo was created under the owner's account and `main` pushed at 18:27 to 18:28 UTC, as public | `DECISIONS.md` D12 updated to match. This entry's commit is pushed with a plain `git push origin main`, closing Phase 1 |
+
+Test runs for these fixes:
+
+| Step | Result |
+|---|---|
+| New and changed wrapper tests against the old script | 9 failed, 11 passed |
+| After the wrapper change | 1 failed, 19 passed. The SIGINT case timed out |
+| After correcting that test | 20 passed, three runs in a row |
+
+The SIGINT failure was in the test job, not the wrapper. The job started `sleep` with `&` from a non-interactive shell, which starts such children with SIGINT ignored (`SigIgn` in `/proc/<pid>/status` confirmed this), so the wrapper correctly kept waiting for it. The test now uses a foreground child, and the limit is documented in `docs/LLD.md`.
+
+Mutants of the new wrapper, run against a scratch copy: signalling only the group leader (3 tests fail), removing the stop-file check (1), allowing the name `jobs` (1), and removing the repeat `wait` (2).
+
+Hand checks with the real inhibitor, in a scratch copy:
+
+- A job killing itself with SIGTERM and with SIGKILL: wrapper exit 143 and 137, with the same codes in `END`.
+- SIGTERM to the wrapper, with a job that cleans up and exits 5: wrapper exit 5, and `systemd-inhibit --list` showed the `sandeha` entry during the cleanup.
+- SIGTERM to the wrapper, with a plain job: exit 143, and the job's marker file never appeared.
+- Ctrl-C in a real pseudo-terminal: wrapper exit 130, `END ... exit=130`, and the job's marker file never appeared.
+- SIGKILL to the wrapper: `START` with no `END`, the job ran to completion, and the `sandeha` entry stayed listed until it finished. This is the check that `docs/LLD.md` gives for use before a restart. This path also leaves the wrapper's small state directory behind in the system temp directory.
+
+Not exercised: a real out-of-memory kill, and a real failure of the inhibitor to start a job. The second is covered only by a fake inhibitor.
 
 ### Next
 

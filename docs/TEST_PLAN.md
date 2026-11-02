@@ -13,7 +13,7 @@
 | Test | Checks |
 |---|---|
 | `tests/test_env.py::test_cuda_runs_a_matmul` | The installed PyTorch multiplies two 1024×1024 matrices on the GPU, and the result is finite |
-| `tests/test_long_job.py` | Wrapper refuses on offline or unknown mains with exit 3, runs under the inhibitor, logs output and start and end, passes on the exit code, runs from the project root, rejects bad usage with exit 2 |
+| `tests/test_long_job.py` | Wrapper refuses on offline or unknown mains with exit 3, runs the job under the inhibitor (job command in the inhibitor's arguments), logs output and start and end, passes on the exit code, reports 128+n for a job killed by a signal, exits 4 and logs `exit=unknown` when the job never reports a status, forwards SIGTERM, SIGINT and SIGHUP to the job and its children, waits for job cleanup with the inhibitor held, handles a signal during inhibitor start-up, runs from the project root, rejects bad usage and the reserved name `jobs` with exit 2. The fake inhibitor copies the real one's exit 1 for a job killed by a signal |
 | `tests/test_repo.py` | Root `data/`, `runs/` and `checkpoints/` are ignored, while `src/sandeha/data/` and `results/` are not |
 
 The wrapper tests use a fake power-supply directory and a recording `systemd-inhibit`. The real inhibitor and real power state are exercised by hand, as logged in `BUILD_LOG.md`.

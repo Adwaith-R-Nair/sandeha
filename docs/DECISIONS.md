@@ -17,7 +17,7 @@ Each major decision, the alternatives and the reason. Status is **Default** for 
 | D9 | Demo served locally through a Python server and WebSockets, not publicly hosted | In-browser inference, public hosting | Simpler, the solver needs the GPU anyway, and it must run with no internet | Default |
 | D10 | Project-local Python 3.12 through `uv` | System Python 3.14 | System Python has no PyTorch | Default |
 | D11 | Public track: `turbulent_radiative_layer_2D` from The Well, 3 members, doubt only | ScalarFlow, `shear_flow`, `rayleigh_benard` | 7.9 GB, CC-BY-4.0, no sign-up. ScalarFlow needs a sign-up form, is almost half a terabyte and 3D. The others are 471 GB and 370 GB | Default |
-| D12 | GitHub repo private until the owner publishes | Public from the start | Prevents copying before submission | Default |
+| D12 | GitHub repo public. Changed from the default on 2026-11-02 (`docs/DESIGN.md` section 3, commit `8fb4453`) | Private until the owner publishes, which was the default and was meant to prevent copying before submission | Owner's choice | Owner |
 | D13 | Weights in a GitHub Release, never in git | Git LFS, committing weights | Keeps the repo small while the demo stays reproducible | Default |
 | D14 | Freeze on the morning of 2026-11-04 | Work until the deadline | Leaves a full day to learn the project and rehearse | Default |
 | D15 | Separate project with no reuse of earlier project code | Reuse | Owner requirement | Owner |
@@ -64,3 +64,15 @@ Each major decision, the alternatives and the reason. Status is **Default** for 
 
 - **Decision:** `tests/test_long_job.py` and `tests/test_repo.py` were added.
 - **Reason:** the plan requires test-first development and names only `tests/test_env.py` for this task, which leaves the wrapper and ignore rules uncovered.
+
+### B8: Wrapper stops the job on a signal and reports its real status (2026-11-02)
+
+- **Decision:** `long_job.sh` forwards SIGTERM, SIGINT and SIGHUP to the job's process group and waits for it to stop. A helper under the inhibitor records the job's status, so a job killed by signal n reports 128+n. A job that reports no status gives wrapper exit 4 and `exit=unknown`. The name `jobs` is reserved. The job's stdin is `/dev/null`.
+- **Alternatives:** document that the job survives a signal to the wrapper, and that signal deaths log as exit 1.
+- **Reason:** with the first version, the job kept running after SIGTERM to the wrapper, with no `END` line, so it looked dead. Restarting on that reading could put two jobs on the same checkpoints and GPU, against the design's "safe to restart" rule. An out-of-memory kill also logged the same code as an ordinary failure. The cost is about 25 more lines of shell. SIGKILL cannot be forwarded, so that case is documented with a check to run before restarting.
+
+### B9: Wider attribution patterns in the local `commit-msg` hook (2026-11-02)
+
+- **Decision:** the hook also rejects "assisted by" and "assisted with" phrasing and more tool names.
+- **Alternative:** keep the first pattern list.
+- **Reason:** a message of the form "Assisted by" plus a tool name not on the list exited 0. One tool name is matched only through such phrasing, because it is also an ordinary word for a demo feature. Under B4, the hook stays untracked.

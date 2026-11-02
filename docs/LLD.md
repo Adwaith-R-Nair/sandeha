@@ -15,13 +15,16 @@
 
 | Behaviour | Detail |
 |---|---|
-| Exit 2 | Fewer than two arguments, or a name with characters outside letters, digits, `.`, `_`, `-` |
+| Exit 2 | Fewer than two arguments, a name with characters outside letters, digits, `.`, `_`, `-`, or the reserved name `jobs`, since `runs/jobs.log` is the shared log |
 | Exit 3 | No power supply of type `Mains` reports `online=1`. An unknown state also refuses, so that a job never starts on a guess |
-| Inhibitor | `systemd-inhibit --what=sleep:idle:handle-lid-switch` |
+| Exit 4 | The job reported no exit status, for example because the inhibitor could not start it. Logged as `exit=unknown` |
+| Inhibitor | `systemd-inhibit --what=sleep:idle:handle-lid-switch`, with the job as its descendant |
 | Working directory | Project root, wherever the wrapper is called from |
 | Logs | Combined output appended to `runs/<name>.log` and shown on the terminal. `START` and `END` lines with exit code and elapsed seconds appended to `runs/jobs.log` |
-| Exit code | The command's own |
-| Killed wrapper | Leaves a `START` line with no `END` line |
+| Exit code | The job's own, or 128+n when signal n killed it. A helper under the inhibitor records this, because `systemd-inhibit` reports any job killed by a signal as exit 1 |
+| Standard input | `/dev/null`: the job runs in a background process group |
+| SIGTERM, SIGINT, SIGHUP to the wrapper | Sent to the job's whole process group, including its children. The inhibitor stays held and the wrapper waits for the job to stop, then writes `END`. A second signal is forwarded the same way. A child started with `&` from a non-interactive shell ignores SIGINT, and the wrapper keeps waiting for it; SIGTERM stops it |
+| `START` with no `END` | The wrapper got SIGKILL or the machine died. **The job may still be running.** Before restarting, check that `systemd-inhibit --list` shows no `sandeha` entry for the job, so that two jobs never share checkpoints or the GPU |
 | Test override | `SANDEHA_POWER_SUPPLY_DIR` replaces `/sys/class/power_supply` |
 
 ## Physics
