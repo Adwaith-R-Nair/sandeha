@@ -3,6 +3,8 @@
 The domain is the unit square. Rows grow upward, so "up" is +row and +v.
 """
 
+import math
+
 import pytest
 import torch
 import torch.nn.functional as F
@@ -162,6 +164,61 @@ def test_steady_vortex_stays_centred():
     assert centre_y == pytest.approx(0.5, abs=1e-3)
 
 
+def lamb_oseen(res, cx, cy, circulation, core):
+    x, y = coords(res)
+    dx, dy = x - cx, y - cy
+    r2 = dx**2 + dy**2 + 1e-12
+    swirl = circulation / (2 * math.pi * r2) * (1 - torch.exp(-r2 / core**2))
+    return torch.stack([-dy * swirl, dx * swirl])
+
+
+def positive_vortex_centre(velocity):
+    """Centroid of the part of the anticlockwise vorticity above half its peak."""
+    res = velocity.shape[-1]
+    x, y = coords(res)
+    u, v = velocity[0]
+    vorticity = torch.zeros_like(u)
+    vorticity[1:-1, 1:-1] = (
+        (v[1:-1, 2:] - v[1:-1, :-2]) - (u[2:, 1:-1] - u[:-2, 1:-1])
+    ) * res / 2
+    core = torch.where(vorticity > 0.5 * vorticity.max(), vorticity, torch.zeros_like(vorticity))
+    return float((core * x).sum() / core.sum()), float((core * y).sum() / core.sum())
+
+
+@pytest.mark.parametrize("axis", ["up", "right"])
+def test_vortex_pair_carries_itself(axis):
+    """Velocity must carry itself. Each vortex moves its partner, so the pair travels.
+
+    Point vortices give speed circulation / (2 pi separation). The bound is loose on the
+    low side, because walls and numerical dissipation slow the pair. With either velocity
+    component left out of the advection, the pair covers at most a quarter of the distance.
+    """
+    res = 64
+    circulation, separation, core, steps = 0.5, 0.2, 0.04, 50
+    half = separation / 2
+    if axis == "up":
+        velocity = lamb_oseen(res, 0.5 - half, 0.25, circulation, core)
+        velocity = velocity + lamb_oseen(res, 0.5 + half, 0.25, -circulation, core)
+    else:
+        velocity = lamb_oseen(res, 0.25, 0.5 + half, circulation, core)
+        velocity = velocity + lamb_oseen(res, 0.25, 0.5 - half, -circulation, core)
+    solver = SmokeSolver(res, DEVICE, DT)
+    obstacle = torch.zeros(1, 1, res, res, dtype=torch.bool, device=DEVICE)
+    no_inflow = torch.zeros(1, 1, res, res, device=DEVICE)
+    start = solver.project(
+        SmokeState(velocity[None], torch.zeros(1, 1, res, res, device=DEVICE)), obstacle
+    )
+
+    end = run(solver, start, obstacle, no_inflow, buoyancy(0.0), steps)
+
+    x0, y0 = positive_vortex_centre(start.velocity)
+    x1, y1 = positive_vortex_centre(end.velocity)
+    along, across = (y1 - y0, x1 - x0) if axis == "up" else (x1 - x0, y1 - y0)
+    point_vortex_distance = circulation / (2 * math.pi * separation) * steps * DT
+    assert 0.6 * point_vortex_distance < along < 1.1 * point_vortex_distance
+    assert abs(across) < 0.01
+
+
 def test_advection_follows_a_rotation_without_spiralling():
     """A first-order trace moves a rotating blob outward a little on every step."""
     res = 128
@@ -262,8 +319,9 @@ def test_smoke_does_not_cross_a_thin_wall():
 
     state = run(solver, still(res), wall, inflow, buoyancy(2.0), 100)
 
-    above = box(res, -1.0, 2.0, 0.5 + 1.5 / res, 2.0)
-    assert state.density[box(res, -1.0, 2.0, -1.0, 0.5)].max() > 0
+    below = box(res, -1.0, 2.0, -1.0, 0.5)
+    above = ~(wall | below)
+    assert state.density[below].max() > 0
     assert state.density[above].abs().max() == 0
 
 
@@ -284,19 +342,44 @@ def test_fully_solid_domain_stays_finite():
 
 
 def test_obstacle_change_mid_run_is_respected():
-    """A late obstacle must not be solved with the pressure setup of the old one."""
+    """A late obstacle applies from its first step, with a new pressure setup."""
     res = 64
     obstacle, inflow = low_plume(res)
     solver = SmokeSolver(res, DEVICE, DT)
     state = run(solver, still(res), obstacle, inflow, buoyancy(2.0), 40)
 
-    late = box(res, 0.3, 0.7, 0.4, 0.5)
-    state = run(solver, state, late, inflow, buoyancy(2.0), 2)
+    late = box(res, 0.3, 0.7, 0.1, 0.3)
+    assert state.density[late].max() > 0.1  # There is smoke for the new solid to clear.
+    state = solver.step(state, late, inflow, buoyancy(2.0))
 
     assert state.velocity[late.expand(-1, 2, -1, -1)].abs().max() == 0
     assert state.density[late].abs().max() == 0
     assert solver.divergence(state, late)[~late].abs().max() < 1e-2
     assert solver.last_solve.converged.all()
+
+
+def test_new_wall_stops_smoke_on_its_first_step():
+    """Flow from before the change must not carry smoke through the new wall."""
+    res = 64
+    wall = box(res, -1.0, 2.0, 0.5, 0.5 + 1.5 / res)  # Full width, one cell thick.
+    assert wall.sum() == res
+    below = box(res, -1.0, 2.0, -1.0, 0.5)
+    above = ~(wall | below)
+    u = torch.zeros(1, 1, res, res + 1, device=DEVICE)
+    v = torch.full((1, 1, res + 1, res), 3.0, device=DEVICE)  # Two cells a step, straight up.
+    v[..., 0, :] = 0
+    v[..., -1, :] = 0
+    state = SmokeState(
+        velocity=SmokeSolver._centre(u, v),
+        density=below.float(),
+        mac=(u, v),
+    )
+    no_inflow = torch.zeros(1, 1, res, res, device=DEVICE)
+
+    state = SmokeSolver(res, DEVICE, DT).step(state, wall, no_inflow, buoyancy(0.0))
+
+    assert state.density[below].max() > 0
+    assert state.density[above].abs().max() == 0
 
 
 def test_batch_matches_single_runs():
@@ -325,12 +408,13 @@ def test_batch_matches_single_runs():
         assert batched_iterations[i] == single_solver.last_solve.iterations[0]
 
 
-def test_non_finite_item_does_not_stall_or_poison_the_batch():
+@pytest.mark.parametrize("bad", [float("nan"), float("inf")], ids=["nan", "inf"])
+def test_non_finite_item_does_not_stall_or_poison_the_batch(bad):
     res = 64
     obstacle = torch.zeros(2, 1, res, res, dtype=torch.bool, device=DEVICE)
     state = still(res, 2)
     state.velocity[1] = 2 * torch.rand(2, res, res, device=DEVICE) - 1
-    state.velocity[0, 0, 10, 10] = float("nan")
+    state.velocity[0, 0, 10, 10] = bad
     solver = SmokeSolver(res, DEVICE, DT)
 
     result = solver.project(state, obstacle)
@@ -338,8 +422,124 @@ def test_non_finite_item_does_not_stall_or_poison_the_batch():
     assert solver.last_solve.iterations[0] == 0
     assert not solver.last_solve.converged[0]
     assert solver.last_solve.converged[1]
+    assert not torch.isfinite(result.velocity[0]).all()
     assert torch.isfinite(result.velocity[1]).all()
     assert solver.divergence(result, obstacle)[1].abs().max() < 1e-3
+
+
+def test_infinite_face_is_not_reported_as_converged():
+    """One infinite face makes the tolerance infinite too, which must not count as a pass."""
+    res = 64
+    obstacle = torch.zeros(1, 1, res, res, dtype=torch.bool, device=DEVICE)
+    u = torch.zeros(1, 1, res, res + 1, device=DEVICE)
+    v = torch.zeros(1, 1, res + 1, res, device=DEVICE)
+    u[0, 0, 10, 10] = float("inf")
+    state = SmokeState(SmokeSolver._centre(u, v), torch.zeros(1, 1, res, res, device=DEVICE), (u, v))
+    solver = SmokeSolver(res, DEVICE, DT)
+
+    solver.project(state, obstacle)
+
+    assert not solver.last_solve.converged[0]
+
+
+@pytest.mark.parametrize("bad", [float("nan"), float("inf")], ids=["nan", "inf"])
+@pytest.mark.parametrize("component", [0, 1], ids=["u", "v"])
+def test_bad_velocity_in_a_moving_flow_never_heals(component, bad):
+    """Task 9 counts a blown-up rollout as a failure, so a step must not make it look finite."""
+    res = 64
+    torch.manual_seed(5)
+    solver = SmokeSolver(res, DEVICE, DT)
+    obstacle = torch.zeros(1, 1, res, res, dtype=torch.bool, device=DEVICE)
+    state = solver.project(
+        SmokeState(
+            2 * torch.rand(1, 2, res, res, device=DEVICE) - 1,
+            torch.rand(1, 1, res, res, device=DEVICE),
+        ),
+        obstacle,
+    )
+    faces = [face.clone() for face in state.mac]
+    faces[component][0, 0, 20, 20] = bad
+    state = SmokeState(state.velocity, state.density, tuple(faces))
+    no_inflow = torch.zeros(1, 1, res, res, device=DEVICE)
+
+    for _ in range(10):
+        state = solver.step(state, obstacle, no_inflow, buoyancy(0.0))
+
+        assert not solver.last_solve.converged[0]
+        assert not torch.isfinite(state.velocity).all()
+        assert not torch.isfinite(state.density).all()
+
+
+def plume_with_fault(fault, device):
+    """Two items of the same plume start, with a fault put into item 0 only."""
+    res = 64
+    state = SmokeState(
+        velocity=torch.zeros(2, 2, res, res, device=device),
+        density=torch.zeros(2, 1, res, res, device=device),
+    )
+    where, bad = fault.split("_")
+    value = float(bad)
+    if where == "velocity":
+        state.velocity[0, 0, 10, 10] = value
+    elif where == "density":
+        state.density[0, 0, 10, 10] = value
+    else:
+        u = torch.zeros(2, 1, res, res + 1, device=device)
+        v = torch.zeros(2, 1, res + 1, res, device=device)
+        u[0, 0, 10, 10] = value
+        state.mac = (u, v)
+    return state
+
+
+def plume_inputs(res, batch, device):
+    obstacle = torch.zeros(batch, 1, res, res, dtype=torch.bool, device=device)
+    inflow = hard_inflow(res).to(device).expand(batch, -1, -1, -1)
+    return obstacle, inflow, torch.full((batch,), 2.0, device=device)
+
+
+@pytest.mark.parametrize("device", ["cpu", "cuda"])
+@pytest.mark.parametrize(
+    "fault", ["velocity_nan", "velocity_inf", "faces_nan", "faces_inf", "density_nan", "density_inf"]
+)
+def test_non_finite_item_survives_step(fault, device):
+    """A blown-up item stays visibly blown up, and the rest of the batch carries on."""
+    res = 64
+    state = plume_with_fault(fault, device)
+    solver = SmokeSolver(res, device, DT)
+    obstacle, inflow, lift = plume_inputs(res, 2, device)
+    single_solver = SmokeSolver(res, device, DT)
+    single = SmokeState(state.velocity[1:] * 0, state.density[1:] * 0)
+    single_inputs = plume_inputs(res, 1, device)
+
+    for _ in range(3):
+        state = solver.step(state, obstacle, inflow, lift)
+        single = single_solver.step(single, *single_inputs)
+
+        assert solver.last_solve.converged.tolist() == [False, True]
+        assert not torch.isfinite(state.velocity[0]).all()
+        assert torch.allclose(state.velocity[1], single.velocity[0], atol=1e-4)
+        assert torch.allclose(state.density[1], single.density[0], atol=1e-4)
+
+    # The device still works for unrelated tensors.
+    assert float((torch.zeros(3, device=device) + 1).sum()) == 3
+
+
+def test_huge_item_survives_step():
+    """Huge but finite values must not crash the solver or disturb the other item."""
+    res = 64
+    state = plume_with_fault("velocity_1e30", DEVICE)
+    solver = SmokeSolver(res, DEVICE, DT)
+    obstacle, inflow, lift = plume_inputs(res, 2, DEVICE)
+    single_solver = SmokeSolver(res, DEVICE, DT)
+    single = SmokeState(state.velocity[1:] * 0, state.density[1:] * 0)
+    single_inputs = plume_inputs(res, 1, DEVICE)
+
+    for _ in range(3):
+        state = solver.step(state, obstacle, inflow, lift)
+        single = single_solver.step(single, *single_inputs)
+
+        assert solver.last_solve.converged[1]
+        assert torch.allclose(state.velocity[1], single.velocity[0], atol=1e-4)
 
 
 def test_iteration_limit_is_reported_as_not_converged():

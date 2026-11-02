@@ -168,12 +168,17 @@ def _conjugate_gradient(
 
 
 def _interpolate(q: Tensor, x: Tensor, y: Tensor) -> Tensor:
-    """Bilinear lookup at lattice coordinates, clamped to the lattice."""
+    """Bilinear lookup at lattice coordinates, clamped to the lattice.
+
+    A NaN coordinate gives NaN, so a blown-up item stays visibly blown up. Its index is still
+    kept in range: NaN cast to an integer is a huge negative index, which on a GPU fails an
+    assert that disables the device for the whole process.
+    """
     batch, _, height, width = q.shape
     x = x.clamp(min=0.0, max=width - 1.0)
     y = y.clamp(min=0.0, max=height - 1.0)
-    i = x.floor().long().clamp(max=width - 2)
-    j = y.floor().long().clamp(max=height - 2)
+    i = x.nan_to_num(0.0).floor().long().clamp(max=width - 2)
+    j = y.nan_to_num(0.0).floor().long().clamp(max=height - 2)
     fx = x - i
     fy = y - j
     flat = q.view(batch, -1)
@@ -210,7 +215,8 @@ class SmokeSolver:
         levels = self._hierarchy(fluid)
         if state.mac is None:
             state = self.project(state, obstacle)
-        u, v = state.mac
+        # An obstacle may be new on this step, so nothing may move through it from the start.
+        u, v = self._mask_faces(*state.mac, levels)
         density = state.density * fluid
 
         new_density = self._advect(density, 0.5, 0.5, u, v)
@@ -244,7 +250,10 @@ class SmokeSolver:
         """Divergence per cell ``(B,1,H,W)`` in physical units, and zero in solid cells.
 
         It is measured on the faces when the state has them, since those are what the
-        solver makes divergence-free. The cell-centred view has a larger divergence.
+        solver makes divergence-free. With ``mac=None``, faces are averaged from ``velocity``,
+        which amounts to central differences. That does not preserve the projection, so the
+        result stays large even for a projected field: see the figures in
+        ``results/solver_check.json``. Do not read it as a measure of how good a solve was.
         """
         fluid = obstacle == 0
         levels = self._hierarchy(fluid)
@@ -284,8 +293,9 @@ class SmokeSolver:
         while True:
             flux = self._net_flux(u, v) * (level.inv_diag > 0)
             measured = flux.abs().amax(dim=(1, 2, 3))
-            # Comparisons with NaN are false, so a non-finite item never starts or converges.
-            converged = measured <= tolerance
+            # Comparisons with NaN are false, so an item with NaN never starts or converges.
+            # An infinite face would make the tolerance infinite, so that needs its own check.
+            converged = (measured <= tolerance) & speed.isfinite()
             active = ~converged & (measured < _MIN_PROGRESS * previous) & (used < self.cg_max_iter)
             if not active.any():
                 self.last_solve = PressureReport(used, measured * self.res, converged)

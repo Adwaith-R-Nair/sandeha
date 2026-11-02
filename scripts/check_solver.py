@@ -25,7 +25,9 @@ DT = 0.01
 LIFT = 2.0
 WARM_UP_STEPS = 100
 TIMED_STEPS = 100
-CONVERGENCE_TIMES = (0.25, 0.5, 0.75, 1.0)
+CONVERGENCE_TIMES = tuple(0.25 * i for i in range(1, 13))  # Up to t = 3.
+LONG_RUN_STEPS = 300
+PLAN_DIVERGENCE_LIMIT = 1e-3  # The plan's limit, which it sets at 64x64.
 STRIP_TIMES = (0.25, 0.75, 1.25, 1.75, 2.25, 3.0)
 
 
@@ -120,9 +122,72 @@ def measure_convergence():
                     "time": t,
                     "error_128_vs_256": relative_error(runs[128][t], F.avg_pool2d(fine, 2)),
                     "error_64_vs_256": relative_error(runs[64][t], F.avg_pool2d(fine, 4)),
+                    "ratio_128_to_64": relative_error(runs[128][t], F.avg_pool2d(fine, 2))
+                    / relative_error(runs[64][t], F.avg_pool2d(fine, 4)),
                 }
             )
     return table
+
+
+def divergence_size(solver, state, obstacle):
+    div = solver.divergence(state, obstacle)
+    fluid = div[obstacle == 0]
+    return {"max": float(fluid.abs().max()), "rms": float(fluid.pow(2).mean().sqrt())}
+
+
+def measure_long_run():
+    """Divergence over a whole run, and of each velocity view of its final state."""
+    res = 256
+    obstacle = disc(res, 0.5, 0.55, 0.1)
+    inflow = soft_inflow(res)
+    lift = torch.tensor([LIFT], device=DEVICE)
+    solver = SmokeSolver(res, DEVICE, DT)
+    state = still(res)
+    residuals = []
+    limits = []
+    all_converged = True
+    for _ in range(LONG_RUN_STEPS):
+        state = solver.step(state, obstacle, inflow, lift)
+        u, v = state.mac
+        fastest = max(float(u.abs().max()), float(v.abs().max()))
+        residuals.append(float(solver.last_solve.residual[0]))
+        limits.append(solver.cg_tol * fastest * res)
+        all_converged = all_converged and bool(solver.last_solve.converged[0])
+
+    coarse = SmokeSolver(128, DEVICE, DT)
+    random_solver = SmokeSolver(64, DEVICE, DT)
+    open_box = torch.zeros(1, 1, 64, 64, dtype=torch.bool, device=DEVICE)
+    generator = torch.Generator(device=DEVICE).manual_seed(0)
+    random_velocity = 2 * torch.rand(1, 2, 64, 64, device=DEVICE, generator=generator) - 1
+    projected = random_solver.project(
+        SmokeState(random_velocity, torch.zeros(1, 1, 64, 64, device=DEVICE)), open_box
+    )
+    return {
+        "res": res,
+        "steps": LONG_RUN_STEPS,
+        "cg_tol": solver.cg_tol,
+        "max_divergence": max(residuals),
+        "max_physical_limit": max(limits),
+        "steps_above_plan_limit": sum(r > PLAN_DIVERGENCE_LIMIT for r in residuals),
+        "plan_limit": PLAN_DIVERGENCE_LIMIT,
+        "all_converged": all_converged,
+        "max_divergence_steps_101_to_200": max(residuals[100:200]),
+        "view_divergence": {
+            "plume_256_faces": divergence_size(solver, state, obstacle),
+            "plume_256_cell_centred": divergence_size(
+                solver, SmokeState(state.velocity, state.density), obstacle
+            ),
+            "plume_128_downsampled_cell_centred": divergence_size(
+                coarse,
+                SmokeState(F.avg_pool2d(state.velocity, 2), F.avg_pool2d(state.density, 2)),
+                disc(128, 0.5, 0.55, 0.1),
+            ),
+            "random_64_faces": divergence_size(random_solver, projected, open_box),
+            "random_64_cell_centred": divergence_size(
+                random_solver, SmokeState(projected.velocity, projected.density), open_box
+            ),
+        },
+    }
 
 
 def render_strip(path):
@@ -172,6 +237,7 @@ def main():
         },
         "speed": [measure_speed(res, batch) for res in (256, 128) for batch in (1, 8, 16)],
         "convergence": measure_convergence(),
+        "long_run": measure_long_run(),
         "peak_gpu_memory_mib": torch.cuda.max_memory_allocated(DEVICE) / 2**20,
     }
     render_strip(ROOT / "results" / "figures" / "solver_check.png")
