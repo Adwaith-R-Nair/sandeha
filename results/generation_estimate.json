@@ -1,0 +1,229 @@
+{
+ "git_commit": "3d7ba637e305222deab7dbca6a9b1b8d5f2dc2bf",
+ "git_dirty": false,
+ "config": {
+  "seed": 20261104,
+  "res": 256,
+  "coarse_res": 128,
+  "dt": 0.01,
+  "steps_per_frame": 4,
+  "frames": 121,
+  "batch_size": 16,
+  "fine_frames": [
+   20
+  ],
+  "scenes": {
+   "train": 240,
+   "val": 30,
+   "test_a": 30,
+   "test_b": 30,
+   "test_c": 30
+  }
+ },
+ "estimate_seed": 900001,
+ "gpu": "NVIDIA GeForce RTX 3060 Laptop GPU",
+ "torch_version": "2.15.0+cu132",
+ "gpu_before": {
+  "temperature.gpu": "57",
+  "clocks.sm": "210 MHz",
+  "clocks_throttle_reasons.active": "0x0000000000000001",
+  "power.draw": "16.14 W"
+ },
+ "gpu_after": {
+  "temperature.gpu": "79",
+  "clocks.sm": "1605 MHz",
+  "clocks_throttle_reasons.active": "0x0000000000000000",
+  "power.draw": "41.58 W"
+ },
+ "measurement_wall_seconds": 431.3057439920012,
+ "batch_comparison_train": {
+  "8": {
+   "scenes": 16,
+   "seconds_per_scene": 5.003373196437451,
+   "peak_gpu_mib": 172.9736328125
+  },
+  "16": {
+   "scenes": 16,
+   "seconds_per_scene": 3.5666738292500213,
+   "peak_gpu_mib": 345.85595703125
+  }
+ },
+ "chosen_batch_size": 16,
+ "peak_gpu_mib": 345.87158203125,
+ "per_split": {
+  "train": {
+   "scenes_measured": 16,
+   "seconds_per_scene": 3.6150613666250138,
+   "sampling_seconds_per_scene": 0.012831352062448786,
+   "solving_seconds_per_scene": 3.5832828236250407,
+   "writing_seconds_per_scene": 0.018947190937524283,
+   "item_steps_per_second": 133.95537657125436
+  },
+  "val": {
+   "scenes_measured": 16,
+   "seconds_per_scene": 3.5290101172499817,
+   "sampling_seconds_per_scene": 0.012744113562575876,
+   "solving_seconds_per_scene": 3.4969433114374624,
+   "writing_seconds_per_scene": 0.01932269224994343,
+   "item_steps_per_second": 137.26273412270157
+  },
+  "test_a": {
+   "scenes_measured": 16,
+   "seconds_per_scene": 3.7342463521249556,
+   "sampling_seconds_per_scene": 0.013201046750054957,
+   "solving_seconds_per_scene": 3.7018134854374694,
+   "writing_seconds_per_scene": 0.019231819937431283,
+   "item_steps_per_second": 129.66617629123337
+  },
+  "test_b": {
+   "scenes_measured": 16,
+   "seconds_per_scene": 3.868613912625051,
+   "sampling_seconds_per_scene": 0.05422712012500597,
+   "solving_seconds_per_scene": 3.7952043473751473,
+   "writing_seconds_per_scene": 0.01918244512489764,
+   "item_steps_per_second": 126.47540318401545
+  },
+  "test_c": {
+   "scenes_measured": 16,
+   "seconds_per_scene": 3.406586312374884,
+   "sampling_seconds_per_scene": 0.012724583624958541,
+   "solving_seconds_per_scene": 3.374867851875024,
+   "writing_seconds_per_scene": 0.018993876874901616,
+   "item_steps_per_second": 142.22779115138374
+  }
+ },
+ "sample_seconds": {
+  "sampling": 1.691651458000706,
+  "solving": 287.2337891160023,
+  "writing": 1.530848401995172,
+  "assembling": 1.6284103680009139,
+  "hashing": 0.5409964470018167,
+  "normalizer": 1.2204082440002821
+ },
+ "sample_wall_seconds": 293.99031087800176,
+ "sample_bytes": 1053835490,
+ "sample_solver_health": {
+  "train": {
+   "unconverged_item_steps": 0,
+   "item_steps": 7680,
+   "max_cg_iterations": 13,
+   "max_divergence": 0.0034809112548828125,
+   "max_travel_cells_per_step": 4.503719329833984,
+   "max_density_in_solid": 0.0,
+   "rounding_rms": [
+    3.165910486162748e-05,
+    3.6028227463049326e-05,
+    4.069745348576492e-05
+   ],
+   "frame_change_rms": [
+    0.020381520161097826,
+    0.022027428090669866,
+    0.04431671827722213
+   ]
+  },
+  "val": {
+   "unconverged_item_steps": 0,
+   "item_steps": 7680,
+   "max_cg_iterations": 16,
+   "max_divergence": 0.002960205078125,
+   "max_travel_cells_per_step": 5.2997589111328125,
+   "max_density_in_solid": 0.0,
+   "rounding_rms": [
+    2.8338353273959743e-05,
+    3.170630095762341e-05,
+    3.275382659472283e-05
+   ],
+   "frame_change_rms": [
+    0.017381529116189714,
+    0.019359554267539162,
+    0.034659507697484535
+   ]
+  },
+  "test_a": {
+   "unconverged_item_steps": 0,
+   "item_steps": 7680,
+   "max_cg_iterations": 17,
+   "max_divergence": 0.00319671630859375,
+   "max_travel_cells_per_step": 4.993209362030029,
+   "max_density_in_solid": 0.0,
+   "rounding_rms": [
+    3.398255701223074e-05,
+    3.926690437516579e-05,
+    3.750991467212021e-05
+   ],
+   "frame_change_rms": [
+    0.023810760172448323,
+    0.0255655656073651,
+    0.0442311568239843
+   ]
+  },
+  "test_b": {
+   "unconverged_item_steps": 0,
+   "item_steps": 7680,
+   "max_cg_iterations": 16,
+   "max_divergence": 0.0030364990234375,
+   "max_travel_cells_per_step": 4.134696960449219,
+   "max_density_in_solid": 0.0,
+   "rounding_rms": [
+    2.7354348147337056e-05,
+    3.367025565368693e-05,
+    3.49637984185222e-05
+   ],
+   "frame_change_rms": [
+    0.019511072474566737,
+    0.021953859145658877,
+    0.040045906428981405
+   ]
+  },
+  "test_c": {
+   "unconverged_item_steps": 0,
+   "item_steps": 7680,
+   "max_cg_iterations": 12,
+   "max_divergence": 0.0030059814453125,
+   "max_travel_cells_per_step": 6.59502649307251,
+   "max_density_in_solid": 0.0,
+   "rounding_rms": [
+    3.672300522123307e-05,
+    4.278464464113106e-05,
+    3.343553138567637e-05
+   ],
+   "frame_change_rms": [
+    0.03707001430144203,
+    0.039602724937314954,
+    0.05107027514200395
+   ]
+  }
+ },
+ "planned_scenes": {
+  "train": 240,
+  "val": 30,
+  "test_a": 30,
+  "test_b": 30,
+  "test_c": 30
+ },
+ "planned_bytes": 4742259705.0,
+ "planned_gb": 4.742259705,
+ "estimate_seconds": {
+  "simulate_by_split": {
+   "train": 867.6147279900033,
+   "val": 105.87030351749945,
+   "test_a": 112.02739056374867,
+   "test_b": 116.05841737875153,
+   "test_c": 102.19758937124652
+  },
+  "assembling": 7.3278466560041124,
+  "hashing": 2.434484011508175,
+  "normalizer": 18.306123660004232,
+  "total": 1331.836883148766
+ },
+ "estimate_hours": 0.3699546897635461,
+ "if_every_scene_cost_the_slowest_split_hours": 0.3946581841312597,
+ "if_every_scene_cost_the_fastest_split_hours": 0.348455424106243,
+ "budget_hours": 1.5,
+ "within_budget": true,
+ "not_included": [
+  "the visual spot-check, which is not built",
+  "sustained thermal throttling beyond the length of this sample",
+  "disk cache effects: this sample's files fit in memory, and the planned ones may not"
+ ]
+}

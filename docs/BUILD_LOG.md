@@ -504,3 +504,106 @@ Both regenerated figures were inspected at `1166326`. In `scene_check.png`, each
 ### Next
 
 The independent Phase 2 check and push, then Task 4: generation and test-set lock.
+
+## 2026-11-03: Phase 3, Task 4 (data layer, preregistration and time estimate)
+
+The full dataset has **not** been generated, and the spot-check has not been run. Both come later. No file exists under `data/`. Everything below ran on tiny datasets or a small timing sample.
+
+### What was done
+
+- `src/sandeha/data/store.py`, `dataset.py` and `generate.py`, `scripts/generate_data.py`, `configs/data.yaml` and `tests/data/`.
+- `docs/PREREGISTRATION.md`, committed on its own as `a325999` before any data or model.
+- `scripts/estimate_generation.py` and `results/generation_estimate.json`, beyond the plan's file list.
+- `pyyaml` added for the planned YAML config. Changed decisions are in `DECISIONS.md` B23 to B30.
+
+### Test runs
+
+| Step | Result |
+|---|---|
+| Tests with no generation module | Collection error: `ModuleNotFoundError: No module named 'sandeha.data.generate'` |
+| Tests against an interface-only stub | 18 failed, 58 errors, 1 passed. The one that passed checks the constant naming the test splits. Most errors come from the shared fixture, so this shows little about each test by itself. The mutants below do that |
+| First implementation | 75 passed, 2 failed: `test_dirty_tree_is_refused_unless_allowed` and `test_clean_tree_needs_no_flag`. Both were faults in the tests, which asked for 2 frames with a reference-grid state stored at frame 2. `validate_config` refused that correctly |
+| After correcting those tests | 77 passed in 75.90s |
+| New atomic write test (see Mutants) | Passed on the real code, failed on the mutant |
+| Full suite, `uv run pytest`, at `3d7ba63` | 274 passed in 209.60s |
+
+`test_killed_process_resumes_to_the_same_bytes` sends SIGKILL to a separate process mid-run, finishes the run in a third process, and gets the same checksums as an uninterrupted process. This covers determinism across processes, an open item from Task 2, on the GPU, at 64×64 only.
+
+### Mutants
+
+Faults were put into scratch copies of the package one at a time, with `tests/data` run against each.
+
+**The first mutant run was invalid and was thrown away.** Each of its first 14 mutants reported "killed" by the same test. The cause was that `git_state` resolved the repository from the scratch copy's path, where there is none, so the shared fixture failed for every mutant. The script was fixed, and a control with no change was added, which passed all 77 tests. Only the second run counts.
+
+Second run: 27 mutants, 25 killed. They cover the lock and its order, checksums, late-obstacle timing in both directions, solid clearing, the coarse mask, non-finite and overflow checks, seeds, normaliser fitting and scaling, channel order, target and mask offsets, the resume guards and unconverged counts.
+
+| Survivor | Outcome |
+|---|---|
+| `write_atomic` writing straight to the final path | A real gap: nothing tested atomicity. `test_an_interrupted_write_leaves_no_file_and_keeps_the_old_one` was added, and fails on this mutant |
+| Seed from `[master + index, split]` | Equivalent for the property tested: it still doesn't depend on split sizes, and seeds stay disjoint. The mutant was badly chosen, and a seed that really depends on split sizes wasn't tried |
+
+A mutant that reran only a batch's missing scenes as a smaller batch failed `test_resume_generation`, so batch makeup does change the bytes. This is the reason for B28.
+
+### Time estimate
+
+**Estimated total for the planned dataset: 0.37 h (22.2 minutes) of computing, against the 1.5 h budget. So the plan's starting sizes stand, with no scaling down.** This is extrapolated from a sample and is not a timing of a full run.
+
+From `results/generation_estimate.json`, measured at `3d7ba63` with a clean tree and written by `scripts/estimate_generation.py`. It ran the real generator under `long_job.sh`, at the planned grid, 121 frames and config, on 16 scenes per split, 80 in total, of the planned 360. It used a different master seed and a temporary directory that was deleted afterwards, so no locked scene was drawn. The measurement took 431 s.
+
+Planned steps, in the plan's order:
+
+| Step | Scenes or size | Estimated seconds | Basis |
+|---|---|---|---|
+| Write and commit the preregistration | | Done | `a325999` |
+| Simulate `train` | 240 | 867.6 | 3.615 s per scene, measured |
+| Simulate `val` | 30 | 105.9 | 3.529 s per scene, measured |
+| Simulate `test_a` | 30 | 112.0 | 3.734 s per scene, measured |
+| Simulate `test_b` | 30 | 116.1 | 3.869 s per scene, measured |
+| Simulate `test_c` | 30 | 102.2 | 3.407 s per scene, measured |
+| Join files | 4.74 GB | 7.3 | Scaled from the sample's 1.63 s |
+| Checksums | 4.74 GB | 2.4 | Scaled from the sample's 0.54 s |
+| Fit the normaliser | 240 train scenes | 18.3 | Scaled from the sample's 1.22 s |
+| **Total** | | **1331.8** | **0.37 h** |
+| Spot-check | | Not measured | Not built yet. A hand step, and not part of the total |
+
+Each split's cost per scene includes sampling, solving and writing, and solving is nearly all of it. Applying the slowest split's cost to every scene gives 0.395 h, and the fastest split's gives 0.348 h. That is the spread between splits, not a confidence interval. Each split's cost comes from one batch.
+
+Batch size, on the same 16 train scenes: 5.003 s per scene at batch 8, and 3.567 s at batch 16, with peak GPU memory of 173 MiB and 346 MiB. `configs/data.yaml` uses 16. Larger batches were not measured.
+
+Things this estimate doesn't cover:
+
+- **Sustained heat.** The sample ran for about 7 minutes, and the GPU went from 57°C to 79°C with no active throttle reason at the end. A run three times longer could still throttle.
+- **Disk.** The sample's files fit in memory, so joining and checksums may have gone through the disk cache. Their share of the total is small, under 1%.
+- **Other work on the machine,** and any restart after an interruption.
+
+### Measured on the sample
+
+No unconverged solves, and no density in solids, in any split. These are from 16 scenes per split, not from the dataset.
+
+| Split | Item steps/s | Largest CG iterations | Largest divergence | Largest travel (cells/step) | Rounding as a share of frame change: `u`, `v`, density |
+|---|---|---|---|---|---|
+| train | 134.0 | 13 | 0.00348 | 4.50 | 0.0016, 0.0016, 0.0009 |
+| val | 137.3 | 16 | 0.00296 | 5.30 | 0.0016, 0.0016, 0.0009 |
+| test_a | 129.7 | 17 | 0.00320 | 4.99 | 0.0014, 0.0015, 0.0008 |
+| test_b | 126.5 | 16 | 0.00304 | 4.13 | 0.0014, 0.0015, 0.0009 |
+| test_c | 142.2 | 12 | 0.00301 | 6.60 | 0.0010, 0.0011, 0.0007 |
+
+Rounding is the root mean square error from `float16` over fluid cells, and frame change is the root mean square change per frame. So `float16` looks adequate overall. These are whole-scene averages, and small changes in quiet regions may be nearer the rounding level. That wasn't separated. Largest travel stays below the 10.24-cell thinnest wall, in this sample.
+
+### Open items
+
+- **Next steps for Task 4:** `scripts/long_job.sh data uv run scripts/generate_data.py --config configs/data.yaml`, then the spot-check, then commit `results/data_manifest.json`. Commit nothing between stopping and resuming that run, since a resume needs the same commit (B28).
+- **The tree must be clean at that point,** or the run refuses to start.
+- **The owner may want to review the preregistration's exact figures** (B29) before any model exists.
+- **Not exercised:** a resume at the planned 256×256 grid, or a late obstacle at the planned frames in the store. The tests use 64×64 and patched late frames. `open_split` takes a little longer at full size, and that wasn't timed.
+- `StepDataset` memmaps were not tried with spawned `DataLoader` workers. Task 5 should check its worker setup.
+- `README.md` still gives the status as project setup.
+
+### Not done
+
+- The full generation and its spot-check, as above.
+- The independent phase check and push for Phase 2 remain outstanding, as does the check for this phase. Nothing was pushed in this task.
+
+### Next
+
+Generate the dataset and spot-check it, then Task 5.
