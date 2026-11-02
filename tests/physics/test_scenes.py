@@ -228,6 +228,34 @@ def test_inflow_sits_below_obstacles(split):
 
 
 @pytest.mark.parametrize("split", SPLITS)
+def test_a_scene_starts_with_one_to_three_obstacles(monkeypatch, split):
+    """Counted per attempt, since a sealed draw is thrown away and started again."""
+    real_place, real_way_up = scenes._place_shape, scenes._has_way_up
+    placed = 0
+    per_attempt = []
+
+    def count_place(*args, **kwargs):
+        nonlocal placed
+        placed += 1
+        return real_place(*args, **kwargs)
+
+    def count_way_up(solid, inflow):
+        nonlocal placed
+        per_attempt.append(placed)
+        placed = 0
+        return real_way_up(solid, inflow)
+
+    monkeypatch.setattr(scenes, "_place_shape", count_place)
+    monkeypatch.setattr(scenes, "_has_way_up", count_way_up)
+    rng = np.random.default_rng(0)
+    counts = set()
+    for _ in range(100):
+        scene = sample_scene(rng, 64, split)
+        counts.add(per_attempt[-1] - (scene.late_obstacle is not None))
+    assert counts == {1, 2, 3}
+
+
+@pytest.mark.parametrize("split", SPLITS)
 def test_most_scenes_put_an_obstacle_in_a_plume_path(split):
     """A plume that misses every shape makes a scene easy, whichever family the shapes are."""
     hits = []
