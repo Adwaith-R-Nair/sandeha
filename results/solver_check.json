@@ -1,0 +1,121 @@
+{
+  "git": {
+    "head": "37ba2e56acc0771b65142a38188217f755c87a63",
+    "working_tree_changed": true
+  },
+  "device": "NVIDIA GeForce RTX 3060 Laptop GPU",
+  "settings": {
+    "dt": 0.01,
+    "buoyancy": 2.0,
+    "density_decay": 0.1,
+    "warm_up_steps": 100,
+    "timed_steps": 100
+  },
+  "speed": [
+    {
+      "res": 256,
+      "batch": 1,
+      "steps_per_second": 20.321302053549775,
+      "item_steps_per_second": 20.321302053549775,
+      "mean_cg_iterations": 8.0,
+      "max_divergence": 0.0009765625,
+      "all_converged": true
+    },
+    {
+      "res": 256,
+      "batch": 8,
+      "steps_per_second": 16.70854713574883,
+      "item_steps_per_second": 133.66837708599064,
+      "mean_cg_iterations": 8.0,
+      "max_divergence": 0.0009765625,
+      "all_converged": true
+    },
+    {
+      "res": 256,
+      "batch": 16,
+      "steps_per_second": 12.001588898035132,
+      "item_steps_per_second": 192.02542236856212,
+      "mean_cg_iterations": 8.0,
+      "max_divergence": 0.0009765625,
+      "all_converged": true
+    },
+    {
+      "res": 128,
+      "batch": 1,
+      "steps_per_second": 25.032439012030128,
+      "item_steps_per_second": 25.032439012030128,
+      "mean_cg_iterations": 7.0,
+      "max_divergence": 0.00054931640625,
+      "all_converged": true
+    },
+    {
+      "res": 128,
+      "batch": 8,
+      "steps_per_second": 25.131075358119325,
+      "item_steps_per_second": 201.0486028649546,
+      "mean_cg_iterations": 7.0,
+      "max_divergence": 0.00054931640625,
+      "all_converged": true
+    },
+    {
+      "res": 128,
+      "batch": 16,
+      "steps_per_second": 24.306569255118657,
+      "item_steps_per_second": 388.9051080818985,
+      "mean_cg_iterations": 7.0,
+      "max_divergence": 0.000553131103515625,
+      "all_converged": true
+    }
+  ],
+  "convergence": [
+    {
+      "inflow": "soft",
+      "time": 0.25,
+      "error_128_vs_256": 0.002392831491306424,
+      "error_64_vs_256": 0.005783423315733671
+    },
+    {
+      "inflow": "soft",
+      "time": 0.5,
+      "error_128_vs_256": 0.025302115827798843,
+      "error_64_vs_256": 0.06804217398166656
+    },
+    {
+      "inflow": "soft",
+      "time": 0.75,
+      "error_128_vs_256": 0.0928579643368721,
+      "error_64_vs_256": 0.21338742971420288
+    },
+    {
+      "inflow": "soft",
+      "time": 1.0,
+      "error_128_vs_256": 0.18921206891536713,
+      "error_64_vs_256": 0.376855731010437
+    },
+    {
+      "inflow": "hard",
+      "time": 0.25,
+      "error_128_vs_256": 0.08266383409500122,
+      "error_64_vs_256": 0.1383630633354187
+    },
+    {
+      "inflow": "hard",
+      "time": 0.5,
+      "error_128_vs_256": 0.12318135797977448,
+      "error_64_vs_256": 0.21918821334838867
+    },
+    {
+      "inflow": "hard",
+      "time": 0.75,
+      "error_128_vs_256": 0.3037688434123993,
+      "error_64_vs_256": 0.4192667305469513
+    },
+    {
+      "inflow": "hard",
+      "time": 1.0,
+      "error_128_vs_256": 0.46831586956977844,
+      "error_64_vs_256": 0.4317052364349365
+    }
+  ],
+  "peak_gpu_memory_mib": 144.06884765625
+}

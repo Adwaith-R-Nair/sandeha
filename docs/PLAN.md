@@ -35,7 +35,7 @@
 
 ```
 configs/                 data.yaml  train_unet.yaml  train_fno.yaml  eval.yaml  well.yaml
-scripts/                 long_job.sh  generate_data.py  train.py  select_arch.py  run_experiments.py
+scripts/                 long_job.sh  check_solver.py  generate_data.py  train.py  select_arch.py  run_experiments.py
                          make_figures.py  render_results.py  train_well.py  eval_well.py  run_demo.py  bench_demo.py
 src/sandeha/
   physics/solver.py      SmokeSolver, SmokeState

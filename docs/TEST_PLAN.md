@@ -20,7 +20,31 @@ The wrapper tests use a fake power-supply directory and a recording `systemd-inh
 
 ## Solver checks (Task 2)
 
-Required to pass before any data is generated: divergence near zero after projection, no flow or smoke in obstacles, determinism for a given seed, buoyant rise, convergence under grid refinement, and sealed or fully solid domains staying finite. A rendered 256×256 run is also inspected by eye.
+Required to pass before any data is generated, all in `tests/physics/test_solver.py`, on the GPU:
+
+| Test | Checks |
+|---|---|
+| `test_divergence_known_answer` | `u = x` gives divergence 1 away from walls, independently of `project` |
+| `test_projection_removes_divergence` | Random velocity at 64×64, with and without an obstacle: largest divergence in fluid cells below `1e-3`, and the flow is not simply erased |
+| `test_no_flow_into_obstacles` | After 50 steps, with inflow partly drawn over the obstacle: zero velocity and density in solid cells, and density non-negative |
+| `test_deterministic` | Two runs in one process give identical tensors |
+| `test_buoyancy_lifts_smoke` | The density centroid rises, and stays at the inflow with zero buoyancy |
+| `test_converges_with_refinement` | 128×128 error below 0.8 of 64×64 error against 256×256, on each grid and on a common grid. Smooth inflow to `t=1`, hard inflow to `t=0.5` (`DECISIONS.md` B12) |
+| `test_sealed_cavity_stays_finite` | A closed ring stays finite and converged, and nothing crosses it |
+| `test_fully_solid_domain_stays_finite` | All-zero output and no failure of the pressure solve |
+| `test_smoke_does_not_cross_a_thin_wall` | A one-cell wall across the box keeps all smoke below it |
+| `test_obstacle_change_mid_run_is_respected` | A late obstacle gets a new pressure setup, and its cells are cleared |
+| `test_batch_matches_single_runs` | Batched items match single runs, including iteration counts |
+| `test_non_finite_item_does_not_stall_or_poison_the_batch` | A NaN item uses no iterations and is reported, and the other item is unaffected |
+| `test_iteration_limit_is_reported_as_not_converged` | `cg_max_iter` is respected and reported |
+| `test_pressure_solve_needs_few_iterations` | Below 60 iterations at both 64×64 and 256×256 |
+| `test_preconditioner_is_symmetric` | Required for conjugate gradients to be valid |
+| `test_steady_vortex_stays_centred` | A steady solution does not drift. Catches fields advected on the wrong lattice |
+| `test_advection_follows_a_rotation_without_spiralling` | A rotating blob keeps its radius. Catches a first-order backtrace |
+| `test_thin_sheets_have_no_cell_scale_artefacts` | Laplacian-to-density ratio on a thin-sheet plume stays below 0.25 (`DECISIONS.md` B10) |
+| `test_smoke_matches_the_mass_budget` | Smoke in the box within 5% of inflow minus decay at `t=1.75` |
+
+A rendered 256×256 run, `results/figures/solver_check.png`, is also inspected by eye. `uv run python scripts/check_solver.py` regenerates it, along with the speed and convergence numbers.
 
 ## Data integrity (Tasks 3 and 4)
 

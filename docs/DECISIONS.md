@@ -76,3 +76,39 @@ Each major decision, the alternatives and the reason. Status is **Default** for 
 - **Decision:** the hook also rejects "assisted by" and "assisted with" phrasing and more tool names.
 - **Alternative:** keep the first pattern list.
 - **Reason:** a message of the form "Assisted by" plus a tool name not on the list exited 0. One tool name is matched only through such phrasing, because it is also an ordinary word for a demo feature. Under B4, the hook stays untracked.
+
+### B10: Semi-Lagrangian advection, with MacCormack rejected (2026-11-03)
+
+- **Decision:** semi-Lagrangian advection with a midpoint backtrace, for density and both velocity components.
+- **Alternative:** MacCormack, which `docs/PLAN.md` also allows and which was built first, with a limiter that either reverts to the semi-Lagrangian value or clamps.
+- **Reason:** MacCormack produced cell-scale stair-steps along thin sheets at this time step, which would have become noise in the training targets, and it lost more smoke against the mass budget. `test_thin_sheets_have_no_cell_scale_artefacts` and `test_smoke_matches_the_mass_budget` failed on it. The cost is more numerical dissipation, which is recorded as an open limit in `BUILD_LOG.md`. A smaller time step might also remove the artefact, but was not tried, because it would multiply the data generation cost.
+
+### B11: Multigrid preconditioner (2026-11-03)
+
+- **Decision:** one symmetric V-cycle per conjugate gradient iteration, with red-black smoothing. Coarse levels merge 2×2 blocks and sum the links they replace, so obstacles of any shape are handled exactly. Coarse corrections are scaled up by 1.9, the usual remedy for piecewise-constant transfer.
+- **Alternatives:** Jacobi, which barely helps on this nearly constant diagonal, and MIC(0), which is sequential and suits a GPU badly.
+- **Reason:** iteration counts stay near 8 from 64×64 to 256×256, as `results/solver_check.json` shows, and a test guards this. A test also confirms the preconditioner is symmetric, as conjugate gradients requires.
+
+### B12: Convergence test uses a smooth inflow to `t=1`, and a hard inflow to `t=0.5` (2026-11-03). Changed after a test failed
+
+- **Decision:** `test_converges_with_refinement` runs two cases, and requires the 128×128 error to be below 0.8 of the 64×64 error, which is stricter than the plan's "smaller than".
+- **Alternative:** the first version of the test, a hard-edged disc inflow run to `t=1`, which failed.
+- **Reason:** a table of errors over time pinned down the failure. A hard-edged disc is a different source on each grid, and from about `t=0.75` to `t=1`, depending on the advection scheme, its plume loses pointwise convergence. With a smooth source, the same solver converges through the whole window. The test was changed after seeing a failure, so the full table including the non-converging case is kept in `results/solver_check.json` and in `BUILD_LOG.md`. Task 3 should use smooth inflow edges for the same reason.
+
+### B13: Pressure solve stops on true divergence relative to flow speed (2026-11-03)
+
+- **Decision:** `cg_tol` means that no cell's net flux may exceed `cg_tol` times the fastest face of that batch item. Each pass re-measures this from the faces, and solves for what is left. An item stops when it reaches the target, when a pass fails to halve its divergence, or at `cg_max_iter`. `SmokeSolver.last_solve` reports iterations, divergence and convergence for each item.
+- **Alternatives:** a residual relative to the right-hand side, inside one run of conjugate gradients, or double precision.
+- **Reason:** a relative right-hand side lets smooth fields stop with too much divergence relative to their speed, and the recursive residual can drift from the true value in float32. Repeated correction reaches the target in float32. Double precision was not measured.
+
+### B14: Additions to the planned solver interface (2026-11-03)
+
+- **Decision:**
+  - `SmokeState` gains an optional `mac` field carrying the face velocities between steps.
+  - `SmokeSolver` gains `last_solve` and `preconditioner()`.
+  - `DENSITY_DECAY` is a module constant, set to 0.1 per unit time.
+  - Rows grow upward, so buoyancy acts along +row and plots need `origin="lower"`.
+  - `scripts/check_solver.py` and `results/solver_check.json` were added beyond the plan's file list.
+  - Batch 16 was added to the speed measurement.
+- **Alternatives:** rebuild the faces from the cell-centred view at each step, and keep the measurements as one-off commands.
+- **Reason:** averaging to cell centres and back each step would blur the flow. Saved output and one regenerating command are required by `docs/DESIGN.md` section 6.5. The planned arguments are unchanged.
