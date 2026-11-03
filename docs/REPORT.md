@@ -2,13 +2,13 @@
 
 **Adwaith R Nair.** Course report, 2026-11-04.
 
-Every number here is copied from the file in `results/` named beside it. `docs/RESULTS.md` has the full tables. Lower is better for every score. Brackets are 95% bootstrap intervals over whole scenes, or over whole trajectories in section 5.6.
+Every result figure here is copied from a file in `results/`, named beside it or in the section that reports it. The test counts come from `docs/BUILD_LOG.md`, and the run times come from `runs/jobs.log`, which isn't tracked. `docs/RESULTS.md` has the full tables. Lower is better for every score. Brackets are 95% bootstrap intervals over whole scenes, or over whole trajectories in section 5.6.
 
 ## Abstract
 
 Neural simulators are fast, but they can drift away from the true flow and give no warning. This project trained five small U-Nets to simulate 2D smoke around obstacles, used their disagreement as a doubt signal, and handed off to a conventional solver for a few frames when doubt passed a threshold. The rules were preregistered, the threshold was frozen on validation, and the test run happened once.
 
-The main idea did not work. Doubt-based hand-off did not beat a fixed or random schedule at equal solver budget on any test set. On unseen shapes, the set it was meant for, it was significantly worse than the fixed schedule, 0.2881 against 0.2652, a difference of 0.0229 [0.004, 0.041]. An oracle that used the true error was no better than doubt on familiar scenes or unseen shapes. Doubt does correlate with error at a given rollout time, but on unseen shapes a divergence signal with no ensemble scored higher, 0.676 [0.537, 0.755] against 0.522 [0.286, 0.673], with overlapping intervals and no paired interval saved. The ensemble is about 14 times faster than this project's own reference solver, and more accurate than a coarse solver on familiar scenes and, in the primary window, on unseen shapes, but not on either side of the out-of-range set. A separate test of doubt alone, on 9 test trajectories of a published simulation benchmark, gave a within-time Spearman of 0.820 [0.494, 0.910], against 0.186 [-0.221, 0.501] for the no-ensemble signal. That flow is different, has no hand-off and isn't measured data, so it doesn't change the main result. The main test is small and on generated 2D data, and the project claims no new science.
+The main idea did not work. Doubt-based hand-off did not beat a fixed or random schedule at equal solver budget on any test set. On unseen shapes, the set it was meant for, it was worse than the fixed schedule, 0.2881 against 0.2652, a difference of 0.0229 [0.004, 0.041]. An oracle that used the true error was no better than doubt on familiar scenes or unseen shapes. Doubt does correlate with error at a given rollout time, but on unseen shapes a divergence signal with no ensemble scored higher, 0.676 [0.537, 0.755] against 0.522 [0.286, 0.673], with overlapping intervals and no paired interval saved. The ensemble is about 14 times faster than this project's own reference solver, and more accurate than a coarse solver on familiar scenes and, in the primary window, on unseen shapes, but not on either side of the out-of-range set. A separate test of doubt alone, on 9 test trajectories of a published simulation benchmark, gave a within-time Spearman of 0.820 [0.494, 0.910], against 0.186 [-0.221, 0.501] for the no-ensemble signal. That flow is different, has no hand-off and isn't measured data, so it doesn't change the main result. The main test is small and on generated 2D data, and the project claims no new science.
 
 ## 1. Introduction
 
@@ -85,7 +85,7 @@ Evidence for doubt is the within-time Spearman correlation: at one rollout time,
 
 `scripts/run_experiments.py --final` ran once, from 19:56 on 2026-11-03 to 01:02 on 2026-11-04, and exited with 0, with all code committed. It ran four experiments: accuracy, doubt, hand-off and ablation. The results are stamped `31f57dc`, while the preregistration names `3a16f42`. The later commit changes no code (`docs/DECISIONS.md` B58).
 
-Two things happened to test sets outside that run. A spot-check opened them before any model existed, to render fixed scenes and check their statistics, as the preregistration allows. The oracle reads each test set's reference by design. The test sets have now been seen, so they can't confirm any explanation or any new rule.
+One thing happened to test sets outside that run. A spot-check opened them before any model existed, to render fixed scenes and check their statistics, as the preregistration allows. The oracle's read of the test references, which is by design, happened inside the run. The test sets have now been seen, so they can't confirm any explanation or any new rule.
 
 ## 5. Results
 
@@ -188,7 +188,7 @@ Chaos as a cause of error staying after a hand-off can't be settled, because sav
 - **The reference is chaotic.** Past about `t=1`, it is one realisation of the flow, not pointwise truth, and the window runs from `t=0.8` to `t=2.8` (`results/solver_check.json`). Error partly measures how far two equally good solvers would drift, so it should be read with the secondary measures in `docs/RESULTS.md`.
 - **The solver wasn't checked against experiment,** a published benchmark or a finer grid. It has numerical dissipation.
 - **Small test sets.** Each has 30 scenes, and the sides of `test_c` have 10 and 20. The dataset was generated once.
-- **Members can share mistakes.** On the low side of `test_c` the ensemble makes 23% too much smoke, yet its largest doubt is 0.009 against `tau` 0.0198, so nothing triggers.
+- **Members can share mistakes.** On the low side of `test_c` the ensemble makes 23% too much smoke, yet its largest doubt is 0.009 against `tau` 0.0198 (post-hoc, `results/posthoc_analysis.json`), so nothing triggers.
 - **2D and simulated.** Nothing here transfers to 3D or to real smoke.
 - **One machine.** Times in milliseconds are single measurements on one laptop GPU.
 - **Typed numbers.** The text in this report and the analysis in `docs/RESULTS.md` is typed, not generated, so it has to be checked again if a result file changes.
