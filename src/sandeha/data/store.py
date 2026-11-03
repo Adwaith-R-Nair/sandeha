@@ -29,10 +29,13 @@ from sandeha.physics.solver import SmokeState
 
 TEST_SPLITS = ("test_a", "test_b", "test_c")
 SPLIT_FILES = ("fields.npy", "statics.npz", "fine.npz")
+REPO = Path(__file__).resolve().parents[3]
+DATA_ROOT = REPO / "data"  # The dataset the results come from. Tests use tiny roots elsewhere.
+MANIFEST_COPY = REPO / "results" / "data_manifest.json"
 
 
 class TamperedDataError(ValueError):
-    """A split's files don't match the checksums in the manifest."""
+    """Data files don't match the checksums in the manifest, or the manifest its tracked copy."""
 
 
 def sha256_file(path: Path) -> str:
@@ -144,11 +147,31 @@ class SplitStore:
         return SmokeState(values[None, :2], values[None, 2:])
 
 
+def read_manifest(root: Path) -> dict:
+    """The manifest under ``root``. The planned dataset's must also match its tracked copy.
+
+    Checksums can't see a split replaced together with its manifest, because the new manifest
+    vouches for the new file. The copy in git can. Other roots have no tracked copy to compare.
+    """
+    root = Path(root)
+    path = root / "manifest.json"
+    if not path.exists():
+        raise FileNotFoundError(f"{path} is missing, so generation has not finished")
+    manifest = json.loads(path.read_text())
+    if root.resolve() == Path(DATA_ROOT).resolve():
+        if not Path(MANIFEST_COPY).exists():
+            raise TamperedDataError(f"{MANIFEST_COPY}, the manifest's tracked copy, is missing")
+        if json.loads(Path(MANIFEST_COPY).read_text()) != manifest:
+            raise TamperedDataError(f"{path} does not match its tracked copy {MANIFEST_COPY}")
+    return manifest
+
+
 def open_split(root: Path, split: str, final_eval: bool = False) -> SplitStore:
     """Open a split for reading. Test splits need ``final_eval=True``.
 
     The lock is checked first, so a refused split isn't read at all. Every file's checksum is then
-    compared with the manifest, which takes a few seconds on the largest split.
+    compared with the manifest, which takes a few seconds on the largest split. See
+    ``read_manifest`` for the manifest's own check.
     """
     if split not in SPLITS:
         raise ValueError(f"unknown split {split!r}, expected one of {SPLITS}")
@@ -157,10 +180,7 @@ def open_split(root: Path, split: str, final_eval: bool = False) -> SplitStore:
             f"{split} is a locked test split, read only by the final evaluation (final_eval=True)"
         )
     root = Path(root)
-    manifest_path = root / "manifest.json"
-    if not manifest_path.exists():
-        raise FileNotFoundError(f"{manifest_path} is missing, so generation has not finished")
-    expected = json.loads(manifest_path.read_text())["splits"][split]["files"]
+    expected = read_manifest(root)["splits"][split]["files"]
     for name, checksum in expected.items():
         path = root / split / name
         if not path.exists():

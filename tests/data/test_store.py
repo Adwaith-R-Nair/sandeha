@@ -5,8 +5,18 @@ import shutil
 
 import numpy as np
 import pytest
+import torch
+import torch.nn.functional as F
 
-from sandeha.data.store import TEST_SPLITS, TamperedDataError, open_split, write_atomic
+from sandeha.data import store as store_module
+from sandeha.data.generate import generate
+from sandeha.data.store import TEST_SPLITS, TamperedDataError, open_split, read_manifest, write_atomic
+from sandeha.physics import scenes
+from sandeha.physics.scenes import SPLITS, sample_scene
+
+from conftest import tiny_config
+
+DEVICE = torch.device("cuda")
 
 
 def test_open_split_refuses_test_without_final_eval(tiny_root):
@@ -137,6 +147,107 @@ def test_fine_state_only_where_stored(tiny_root):
     assert state.mac is None
     with pytest.raises(KeyError):
         store.fine_state(0, 3)
+
+
+def pooled_fine_state(store, i: int, frame: int) -> np.ndarray:
+    """A stored fine state, put through the steps that make a frame of ``fields``."""
+    state = store.fine_state(i, frame)
+    values = torch.cat([state.velocity, state.density], dim=1).to(DEVICE)
+    solid = torch.from_numpy(store.obstacle(i, frame - 1))[None, None].to(DEVICE)
+    return (F.avg_pool2d(values, 2) * ~solid).half().cpu().numpy()[0]
+
+
+@pytest.mark.parametrize("split", SPLITS)
+def test_fine_state_pools_to_the_stored_frame(tiny_root, split):
+    """The solver's starts come from here, and a bug would only show once the test sets are locked."""
+    store = open_split(tiny_root, split, final_eval=True)
+    for i in range(store.n_scenes):
+        stored = np.asarray(store.fields[i, 2])
+        assert np.any(stored[2] > 0), "smoke has to have entered for this to say anything"
+        assert np.any(stored[0] != 0) and np.any(stored[1] != 0)
+        assert np.array_equal(pooled_fine_state(store, i, 2), stored)
+
+
+@pytest.fixture(scope="module")
+def late_fine_root(tmp_path_factory):
+    """Every train, val and test_a scene has a late obstacle before the stored fine frames."""
+    patch = pytest.MonkeyPatch()
+    patch.setattr(scenes, "LATE_SHARE", 1.0)
+    patch.setattr(scenes, "LATE_FRAMES", (2, 2))
+    root = tmp_path_factory.mktemp("late_fine") / "data"
+    try:
+        generate(tiny_config(frames=5, fine_frames=[2, 4]), root, allow_dirty=True)
+        yield root
+    finally:
+        patch.undo()
+
+
+def test_each_fine_frame_pools_to_its_own_frame_through_a_late_obstacle(late_fine_root):
+    store = open_split(late_fine_root, "train")
+    for i in range(store.n_scenes):
+        assert store.scene(i).late_frame == 2
+        for frame in (2, 4):
+            assert np.array_equal(pooled_fine_state(store, i, frame), np.asarray(store.fields[i, frame]))
+
+
+def test_late_obstacle_at_both_grids_is_the_one_sampled(late_fine_root):
+    """Task 8 takes the true solid from here."""
+    manifest = json.loads((late_fine_root / "manifest.json").read_text())
+    store = open_split(late_fine_root, "train")
+    for i, seed in enumerate(manifest["splits"]["train"]["seeds"]):
+        sampled = sample_scene(np.random.default_rng(seed), 64, "train")
+        fine = store.fine_scene(i)
+        assert sampled.late_obstacle.any()
+        assert not np.array_equal(sampled.late_obstacle, sampled.obstacle)
+        assert np.array_equal(fine.late_obstacle, sampled.late_obstacle)
+        assert fine.late_frame == sampled.late_frame
+        blocks = sampled.late_obstacle.reshape(32, 2, 32, 2)
+        assert np.array_equal(store.scene(i).late_obstacle, blocks.any(axis=(1, 3)))
+
+
+def lock_this_root(monkeypatch, root, copy) -> None:
+    monkeypatch.setattr(store_module, "DATA_ROOT", root)
+    monkeypatch.setattr(store_module, "MANIFEST_COPY", copy)
+
+
+def test_replacing_a_split_and_its_manifest_together_is_detected(tiny_root, tmp_path, monkeypatch):
+    """Checksums can't see this, because the new manifest vouches for the new file."""
+    root = tmp_path / "data"
+    shutil.copytree(tiny_root, root)
+    copy = tmp_path / "data_manifest.json"
+    shutil.copy(root / "manifest.json", copy)
+    lock_this_root(monkeypatch, root, copy)
+    assert open_split(root, "train").n_scenes == 3
+
+    path = root / "train" / "fields.npy"
+    content = bytearray(path.read_bytes())
+    content[-1] ^= 1
+    path.write_bytes(content)
+    manifest = json.loads((root / "manifest.json").read_text())
+    manifest["splits"]["train"]["files"]["fields.npy"] = store_module.sha256_file(path)
+    (root / "manifest.json").write_text(json.dumps(manifest))
+    with pytest.raises(TamperedDataError, match="tracked copy"):
+        open_split(root, "train")
+
+
+def test_the_dataset_does_not_open_without_its_tracked_copy(tiny_root, tmp_path, monkeypatch):
+    root = tmp_path / "data"
+    shutil.copytree(tiny_root, root)
+    lock_this_root(monkeypatch, root, tmp_path / "no_such_copy.json")
+    with pytest.raises(TamperedDataError, match="tracked copy"):
+        open_split(root, "val")
+
+
+def test_the_lock_comes_before_the_tracked_copy(tiny_root, tmp_path, monkeypatch):
+    root = tmp_path / "data"
+    shutil.copytree(tiny_root, root)
+    lock_this_root(monkeypatch, root, tmp_path / "no_such_copy.json")
+    with pytest.raises(PermissionError):
+        open_split(root, "test_b")
+
+
+def test_a_root_elsewhere_is_not_compared_with_the_tracked_copy(tiny_root):
+    assert read_manifest(tiny_root)["config"]["seed"] == 11
 
 
 def test_scene_index_out_of_range_is_refused(tiny_root):

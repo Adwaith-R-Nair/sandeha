@@ -1,6 +1,7 @@
 """Checks on the normaliser and on what a training item holds."""
 
 import json
+import shutil
 
 import numpy as np
 import pytest
@@ -8,7 +9,7 @@ import torch
 
 from sandeha.data.dataset import Normalizer, StepDataset, fit_normalizer
 from sandeha.data.generate import generate
-from sandeha.data.store import open_split
+from sandeha.data.store import TamperedDataError, open_split
 from sandeha.physics import scenes
 
 from conftest import tiny_config
@@ -98,6 +99,18 @@ def test_normalizer_applies_a_late_obstacle_on_the_planned_frames(late_root):
     assert np.allclose(fitted.field_mean, mean, rtol=1e-6)
     assert np.allclose(fitted.field_std, std, rtol=1e-6)
     assert np.allclose(fitted.delta_std, delta, rtol=1e-6)
+
+
+def test_an_edited_normalizer_is_refused(tiny_root, tmp_path):
+    root = tmp_path / "data"
+    shutil.copytree(tiny_root, root)
+    assert Normalizer.load(root / "normalizer.json").fitted_on == "train"
+
+    values = json.loads((root / "normalizer.json").read_text())
+    values["field_std"][0] *= 1.01
+    (root / "normalizer.json").write_text(json.dumps(values, indent=1) + "\n")
+    with pytest.raises(TamperedDataError):
+        Normalizer.load(root / "normalizer.json")
 
 
 def test_inflow_scale_is_the_peak_of_train(tiny_root, normalizer):

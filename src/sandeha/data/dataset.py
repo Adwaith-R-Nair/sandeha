@@ -12,6 +12,8 @@ import torch
 from torch import Tensor
 from torch.utils.data import Dataset
 
+from sandeha.data.store import TamperedDataError, read_manifest, sha256_file
+
 
 def _channel_view(values: list[float], x: Tensor) -> Tensor:
     if x.dim() < 3 or x.shape[-3] != 3:
@@ -87,7 +89,12 @@ class Normalizer:
 
     @classmethod
     def load(cls, path: Path) -> "Normalizer":
-        return cls(**json.loads(Path(path).read_text()))
+        """Read a saved normaliser. One beside a manifest must match the checksum there."""
+        path = Path(path)
+        if (path.parent / "manifest.json").exists():
+            if sha256_file(path) != read_manifest(path.parent)["normalizer_sha256"]:
+                raise TamperedDataError(f"{path} does not match its checksum in the manifest")
+        return cls(**json.loads(path.read_text()))
 
 
 def fit_normalizer(store) -> Normalizer:
