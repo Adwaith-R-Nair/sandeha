@@ -791,3 +791,16 @@ The review also ran a resume at 256×256 with late obstacles, cut after 2 scenes
 ### Next
 
 Measure the controls, generate the dataset and spot-check it, then Task 5.
+
+## 2026-11-03: Phase 4, Task 5 (models, losses, resumable training)
+
+Built U-Net, FNO, `apply_step`, `divergence`, `step_loss`, `train`, `scripts/train.py`, `scripts/measure_throughput.py` and both configs. Decisions are B46 to B48. A test caught a real bug: the data loader draws from the RNG when it starts, so RNG state restored before it put resumed runs out of step.
+
+Written while the dataset generation ran on the GPU, so everything was tested on tiny data: `tests/models` and `tests/train` gave 38 passed. `test_peak_memory_under_budget` printed a peak of 1.369 GB. The full test suite wasn't rerun, and no existing module changed.
+
+### Open items
+
+- **Throughput not measured**, so the batch size of 16 is unconfirmed. Run `uv run python scripts/measure_throughput.py` when the GPU is free, and log `results/throughput.json`.
+- **`lambda_div` not judged.** The same run gives the divergence floor on real targets.
+- **The data run started from commit fb27f48.** It refuses a resume from any other commit. If it stops before finishing, check that commit out to resume it, since this work comes after it.
+

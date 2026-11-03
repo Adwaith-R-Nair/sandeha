@@ -335,3 +335,21 @@ Each major decision, the alternatives and the reason. Status is **Default** for 
 - **Reason:** B39 said this scene might be above the wall. It is, at 12.61 cells against 10.24. It was run alone, not in its first batch of 16.
 - **Cost:** `results/travel_check.json` stays on the old measure, and is labelled as such in `docs/BUILD_LOG.md`.
 
+### B46: The divergence penalty is on the predicted change, in physical proportion, away from walls (2026-11-03)
+
+- **Decision:** `step_loss` penalises the divergence of the predicted normalised change in `u` and `v`, after undoing their different scales, in grid units. Only cells whose whole stencil is fluid count. `lambda_div` stays 0.1, as planned, and is not yet judged against its floor.
+- **Alternatives:** the penalty on the next velocity, which needs the current state in `step_loss`, and pushes each change to cancel the floor already in the field. Or normalised `u` and `v` as they are, where a divergence-free change doesn't score zero.
+- **Reason:** `step_loss`'s planned inputs are the change, and the largest cell-centred values are expected at walls (`docs/LLD.md`), where a difference crosses a solid.
+
+### B47: Items hold 4 frames, so the last 3 start frames go unused (2026-11-03)
+
+- **Decision:** the plan's "1 to 3 steps with no gradient, and only the last step gets gradients" is up to 4 steps, and training uses `StepDataset(unroll=4)`.
+- **Alternatives:** clamping the pushed depth by frame, which needs a dataset change.
+- **Reason:** simple, and frames 118 to 120 are still seen as targets.
+
+### B48: `max_minutes` is spent from a measurement inside the run (2026-11-03)
+
+- **Decision:** the run's first steps give the speed, with one timed validation and timed no-gradient passes. `total_steps` follows, counting pushed passes and validation, and is saved. `scripts/measure_throughput.py` is separate, is for choosing the batch size, and runs when the GPU is free.
+- **Alternatives:** a total fixed from the separate measurement, which goes stale if the machine's speed changes.
+- **Reason:** the schedule should finish on time on the day. The timing steps run before the warm-up is known, so they have no pushforward.
+

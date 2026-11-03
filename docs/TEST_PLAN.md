@@ -106,7 +106,9 @@ Data checks, in `tests/data/`, on tiny datasets: 64×64 reference grid and a few
 
 ## Training (Task 5)
 
-Model output shapes, solid cells forced to zero, zero divergence for uniform flow, overfitting one batch by at least 10×, atomic checkpoints under interruption, resume restoring optimiser and RNG state, and peak GPU memory below 5.5 GB for U-Net at batch 16.
+Model output shapes, solid cells forced to zero, zero divergence for uniform flow, overfitting one batch by at least 10×, atomic checkpoints under interruption, resume restoring optimiser and RNG state, and peak GPU memory below 5.5 GB for U-Net at batch 16. The peak counts the test's own process, so another job on the GPU doesn't count against it, and the test is limited so that it can't push that job out of memory.
+
+`test_resume_continues` uses a real SIGKILL, both between steps and inside a save, and on the CPU requires the same weights, optimiser and RNG state as an unbroken run.
 
 ## Ensemble and hybrid (Tasks 7 and 8)
 

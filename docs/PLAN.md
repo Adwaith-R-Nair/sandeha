@@ -35,7 +35,7 @@
 
 ```
 configs/                 data.yaml  train_unet.yaml  train_fno.yaml  eval.yaml  well.yaml
-scripts/                 long_job.sh  check_solver.py  generate_data.py  estimate_generation.py  check_travel.py  spot_check.py  train.py  select_arch.py  run_experiments.py
+scripts/                 long_job.sh  check_solver.py  generate_data.py  estimate_generation.py  check_travel.py  spot_check.py  train.py  measure_throughput.py  select_arch.py  run_experiments.py
                          make_figures.py  render_results.py  train_well.py  eval_well.py  run_demo.py  bench_demo.py
 src/sandeha/
   physics/solver.py      SmokeSolver, SmokeState
@@ -205,7 +205,7 @@ U-Net: base width 32, 4 levels, GroupNorm, SiLU. FNO: width 48, 24 modes, 4 laye
   - `test_resume_continues`: killing at step N and resuming reaches the same step count, and restores optimizer and RNG state.
   - `test_peak_memory_under_budget`: U-Net at batch 16, peak memory below 5.5 GB.
 - [ ] Implement, see tests pass, and commit.
-- [ ] Measure throughput for both models, and pick the batch size. Log it.
+- [ ] Measure throughput for both models with `uv run python scripts/measure_throughput.py` once the GPU is free, and pick the batch size. Log it.
 
 ### Task 6: Architecture choice and ensemble
 

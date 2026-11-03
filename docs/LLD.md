@@ -185,7 +185,11 @@ def train(cfg: dict, run_dir: Path, resume: bool) -> Path   # returns best check
 | Stability | After warm-up, sometimes unroll 1 to 3 steps without gradient; only the last step gets gradients |
 | Optimiser | AdamW, lr `3e-4`, cosine schedule, mixed precision |
 | Duration | `max_minutes` sets total steps from measured throughput |
-| Best checkpoint | Lowest validation rollout error over 20 steps |
+| Best checkpoint | Lowest validation rollout error over 20 steps from frame 20, in normalised field units. A frame that blows up counts as 10 |
+| Divergence | On the predicted normalised change, with `u` and `v` rescaled to physical proportion, in grid units, over cells whose whole stencil is fluid (`DECISIONS.md` B46). `step_loss` also returns `div_target`, the same measure on the target |
+| Pushforward | After a warm-up of 10% of steps, half the batches are first pushed 1 to 3 steps. The dataset has `unroll=4`, so a one-step item can't start in the last 3 start frames of a scene (B47) |
+| Files | `last.pt` for restarting, `best.pt`, `metrics.jsonl`, all in the run directory. Saves are atomic, and `train` refuses an existing run without `resume` |
+| Timing | The first `timing_steps` are ordinary steps at the base rate, which also give the speed. A timed validation and timed no-gradient passes then fix `total_steps` (B48) |
 
 **Warning for the physics penalty.** The planned `divergence(velocity, obstacle)` uses central differences on cell-centred velocity, the same in the interior as `SmokeSolver.divergence` with `mac=None`. That has a large nonzero floor on true data, so the penalty cannot reach zero, and pushing it towards zero works against the targets. From `long_run.view_divergence` in `results/solver_check.json`:
 
@@ -197,7 +201,7 @@ def train(cfg: dict, run_dir: Path, resume: bool) -> Path   # returns best check
 | Random field at 64×64, projected, on the faces | 0.00012302 | 2.84e-05 |
 | Same field, cell-centred | 36.535 | 8.91 |
 
-Task 5 should measure this floor on its training targets before fixing `lambda_div`, and report the penalty relative to it. These figures are in physical units, before normalisation, and the largest values were not separated by distance from the obstacle.
+`scripts/measure_throughput.py` measures this floor on the training targets, for judging `lambda_div`, and `metrics.jsonl` reports `div` beside `div_target` throughout training. These figures are in physical units, before normalisation, and the largest values were not separated by distance from the obstacle.
 
 ## Ensemble and doubt
 
