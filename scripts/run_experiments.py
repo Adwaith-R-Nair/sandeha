@@ -5,7 +5,8 @@
 
 Reads results/ensemble.json and results/handoff_selection.json, and any ablation under
 runs/ablation. A plain run writes to runs/experiments/val_results, and --final to results/. Restart the
-same command after a stop: finished rollout sets are kept in runs/experiments.
+same command after a stop: finished rollout sets are kept in runs/experiments. A set made by other code
+runs again, with the old one moved to superseded/ there. An ablation that finishes later joins the run.
 
 --dry-run does all of this on the CPU, in a temporary directory or --out: small random models on one
 tiny solved split under every set's name. It opens no real split and writes nothing in the repo. It
@@ -33,6 +34,7 @@ from sandeha.models.factory import build_model
 from sandeha.physics.solver import SmokeSolver
 from sandeha.train.loop import load_checkpoint
 
+REPO = Path(__file__).resolve().parents[1]
 ABLATIONS = ("no_divergence", "no_pushforward")
 DRY_RUN_CONFIG = {
     "start": 1,
@@ -59,6 +61,17 @@ def _digest(model) -> str:
     digest = hashlib.sha256()
     for value in model.state_dict().values():
         digest.update(value.cpu().numpy().tobytes())
+    return digest.hexdigest()
+
+
+def code_sha256(root: Path = REPO) -> str:
+    """The code that makes the rollouts, as it stands on disk. Docs, results and the demo don't count."""
+    sources = [path for path in sorted((root / "src" / "sandeha").rglob("*.py")) if "demo" not in path.parts]
+    named = [root / "scripts" / "run_experiments.py", root / "scripts" / "select_handoff.py", root / "uv.lock"]
+    digest = hashlib.sha256()
+    for path in [*sources, *(path for path in named if path.exists())]:
+        digest.update(str(path.relative_to(root)).encode())
+        digest.update(path.read_bytes())
     return digest.hexdigest()
 
 
@@ -100,8 +113,10 @@ def dry_run(out: Path, names) -> None:
         provenance={
             "git_commit": commit,
             "git_dirty": dirty,
+            "code_sha256": code_sha256(),
             "data_manifest_sha256": sha256_file(stores["val"].directory / "fields.npy"),
-            "checkpoint_sha256": [_digest(model) for model in [*ensemble.models, *ablations.values()]],
+            "checkpoint_sha256": [_digest(model) for model in ensemble.models],
+            "ablation_checkpoint_sha256": {name: _digest(model) for name, model in ablations.items()},
             "config": DRY_RUN_CONFIG,
             "dry_run": True,
         },
@@ -111,9 +126,9 @@ def dry_run(out: Path, names) -> None:
     run_experiments(evaluation, stores, stores["val"], names, out, final=False)
 
 
-def _ablation_models(run_root: Path, device: str) -> tuple[dict, list[str]]:
+def _ablation_models(run_root: Path, device: str) -> tuple[dict, dict]:
     """The reduced trainings that have finished. Any other is said to be missing, not guessed at."""
-    models, hashes = {}, []
+    models, hashes = {}, {}
     for name in ABLATIONS:
         path = run_root / "ablation" / name / "best.pt"
         if not path.exists():
@@ -123,7 +138,7 @@ def _ablation_models(run_root: Path, device: str) -> tuple[dict, list[str]]:
         model = build_model(saved["config"]["model"]).to(device)
         model.load_state_dict(saved["model"])
         models[name] = model
-        hashes.append(sha256_file(path))
+        hashes[name] = sha256_file(path)
     return models, hashes
 
 
@@ -152,7 +167,9 @@ def real_run(args) -> None:
         selection=selection,
         config=config,
         provenance={
-            **provenance(args.data_root, [*hashes, *ablation_hashes]),
+            **provenance(args.data_root, hashes),
+            "code_sha256": code_sha256(),
+            "ablation_checkpoint_sha256": ablation_hashes,
             "config": config,
             "selection_sha256": sha256_file(args.selection),
         },

@@ -281,10 +281,15 @@ class Evaluation:
         # The chosen aggregation. If **never** won, the one that led step 1 stands in for the figures.
         self.aggregation = choice["aggregation"] or self.selection["aggregation"]["leader"] or AGGREGATIONS[0]
         self._memory = {}
+        self._commits_used = set()
+        # A restart survives a commit that leaves the code alone, and an ablation that finishes late. A
+        # set is checked against the code by itself, in ``_kept_set``, and an ablation's checkpoint is in
+        # its set's name.
+        left_out = ("git_commit", "git_dirty", "code_sha256", "ablation_checkpoint_sha256", "config")
         fingerprint = {
             "config": self.config,
             "choice": choice,
-            **{k: v for k, v in self.provenance.items() if k not in ("git_commit", "git_dirty", "config")},
+            **{k: v for k, v in self.provenance.items() if k not in left_out},
         }
         self.progress_dir = Path(self.progress_dir)
         self.progress_dir.mkdir(parents=True, exist_ok=True)
@@ -295,15 +300,49 @@ class Evaluation:
 
     # Rollout sets
 
+    @property
+    def code_version(self):
+        """What a kept set must match. A real run hashes the code, so that a commit to the docs doesn't count."""
+        return self.provenance.get("code_sha256") or self.provenance.get("git_commit")
+
+    @property
+    def run_commits(self) -> list[str]:
+        """The commits that made the sets read since this was last cleared."""
+        return sorted(commit for commit in self._commits_used if commit)
+
+    def ablation_key(self, name: str) -> str:
+        """Named by its checkpoint, so that a retrained ablation is measured again."""
+        digest = self.provenance.get("ablation_checkpoint_sha256", {}).get(name)
+        return f"ablation_{name}_{digest[:12]}" if digest else f"ablation_{name}"
+
+    def _kept_set(self, path: Path):
+        """The traces and commit of a set made by this code. A set from other code is moved aside."""
+        if not path.exists():
+            return None
+        saved = json.loads(path.read_text())
+        stamped = isinstance(saved, dict)
+        if stamped and saved["code"] == self.code_version:
+            return [RolloutTrace(**item) for item in saved["traces"]], saved["git_commit"]
+        made_by = saved["git_commit"] if stamped else "unstamped"
+        aside = self.progress_dir / "superseded" / path.parent.name / f"{path.stem}.{made_by}.json"
+        aside.parent.mkdir(parents=True, exist_ok=True)
+        path.replace(aside)
+        self.log(f"{path.parent.name}/{path.stem}: made by {made_by} with other code, so it runs again. Old set: {aside}")
+        return None
+
     def run_set(self, store, key: str, make_sim, end: int, scenes=None, scores_by=()) -> list[RolloutTrace]:
         """The set's traces, in the order of ``scenes``, computed once. ``make_sim(position, scene)``."""
         scenes = list(range(store.n_scenes)) if scenes is None else list(scenes)
         memory_key = (store.split, key)
         if memory_key in self._memory:
-            return self._memory[memory_key]
+            traces, commit = self._memory[memory_key]
+            self._commits_used.add(commit)
+            return traces
         path = self.progress_dir / store.split / f"{key}.json"
-        if path.exists():
-            traces = [RolloutTrace(**item) for item in json.loads(path.read_text())]
+        commit = self.provenance.get("git_commit")
+        kept = self._kept_set(path)
+        if kept:
+            traces, commit = kept
         else:
             traces = [
                 rollout(
@@ -318,10 +357,12 @@ class Evaluation:
                 for position, scene in enumerate(scenes)
             ]
             path.parent.mkdir(parents=True, exist_ok=True)
-            write_json_atomic(path, [trace.to_dict() for trace in traces])
+            stamp = {"code": self.code_version, "git_commit": commit, "git_dirty": self.provenance.get("git_dirty")}
+            write_json_atomic(path, {**stamp, "traces": [trace.to_dict() for trace in traces]})
             ms = sum(trace.ms for trace in traces)
             self.log(f"{store.split}/{key}: {len(traces)} rollouts, {ms / 1000:.1f} s stepping")
-        self._memory[memory_key] = traces
+        self._memory[memory_key] = (traces, commit)
+        self._commits_used.add(commit)
         return traces
 
     def hybrid(self, policy, handoff_frames: int = 1, method: str = "mean", ensemble=None, error_of=None):
@@ -816,7 +857,7 @@ def ablation_experiment(ev: Evaluation, store) -> dict:
     trained = {
         name: ev.run_set(
             store,
-            f"ablation_{name}",
+            ev.ablation_key(name),
             lambda *_, model=model: ev.hybrid(AlwaysAI(), ensemble=Ensemble([model], ev.ensemble.normalizer)),
             ev.window.end,
         )
@@ -883,13 +924,14 @@ def run_experiments(ev: Evaluation, stores: dict, reference, names, out: Path, f
     }
     written = {}
     for name in names:
+        ev._commits_used = set()
         found = {"experiment": name, "final": final, "sets": {split: measures[name](store) for split, store in stores.items()}}
         if name == "doubt":
             found["rise_on_unfamiliar"] = rise_experiment(ev, stores)
         if name == "ablation":
             found["notes"] = [ABLATION_NOTE, SIZES_NOTE]
             found["ablations_run"] = sorted(ev.ablation_models)
-        result = with_provenance(found, {"selection_choice": ev.selection["choice"], **ev.provenance})
+        result = with_provenance(found, {"selection_choice": ev.selection["choice"], "run_commits": ev.run_commits, **ev.provenance})
         written[name] = out / f"exp_{name}.json"
         write_json_atomic(written[name], _without_non_finite(result))
         ev.log(f"wrote {written[name]}")

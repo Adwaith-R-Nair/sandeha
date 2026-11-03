@@ -338,6 +338,90 @@ def test_experiments_use_val_unless_final(monkeypatch):
 # The whole path, on tiny data and small random models
 
 
+# Keeping rollouts across a restart
+
+
+def _kept_run(tiny, tmp_path, messages=None, **provenance):
+    stores, normalizer, config = tiny
+    choice = {"kind": "never", "aggregation": None, "handoff_frames": None, "tau": None}
+    return Evaluation(
+        ensemble=small_ensemble(normalizer, 2),
+        solver=SmokeSolver(config["res"], "cpu", config["dt"]),
+        coarse_solver=SmokeSolver(config["coarse_res"], "cpu", config["dt"]),
+        substeps=4, amp=False,
+        selection={"choice": choice, "aggregation": {"leader": "mean"}},
+        config={"start": 1, "primary_end": 4, "long_end": 5, "n_resamples": 20, "default_handoff_frames": 2},
+        provenance={"data_manifest_sha256": "x", "checkpoint_sha256": ["a", "b"], **provenance},
+        progress_dir=tmp_path,
+        log=(messages if messages is not None else []).append,
+    )
+
+
+def _spoil_ensemble_set(tmp_path, split):
+    path = tmp_path / split / "ensemble.json"
+    saved = json.loads(path.read_text())
+    saved["traces"][0]["errors"][0] = 123.0
+    path.write_text(json.dumps(saved))
+
+
+def test_rollouts_from_other_code_are_run_again(tiny, tmp_path):
+    store = tiny[0]["val"]
+    first = _kept_run(tiny, tmp_path, git_commit="commitA").evidence(store)
+    _spoil_ensemble_set(tmp_path, "val")
+    messages = []
+    later = _kept_run(tiny, tmp_path, messages, git_commit="commitB_after_fix")
+    again = later.evidence(store)
+    assert again[0].errors[0] == first[0].errors[0] != 123.0
+    assert later.run_commits == ["commitB_after_fix"]
+    assert any("commitA" in message for message in messages)
+    # The old rollouts stay on record, for a before and after.
+    kept = json.loads((tmp_path / "superseded" / "val" / "ensemble.commitA.json").read_text())
+    assert kept["traces"][0]["errors"][0] == 123.0
+
+
+def test_rollouts_survive_a_commit_that_leaves_the_code_alone(tiny, tmp_path):
+    store = tiny[0]["val"]
+    _kept_run(tiny, tmp_path, git_commit="commitA", code_sha256="same").evidence(store)
+    _spoil_ensemble_set(tmp_path, "val")
+    later = _kept_run(tiny, tmp_path, git_commit="commitB_docs", code_sha256="same")
+    assert later.evidence(store)[0].errors[0] == 123.0
+    assert later.run_set(store, "ensemble", None, 5)[0].errors[0] == 123.0  # From memory, the same.
+    assert later.run_commits == ["commitA"]
+    _kept_run(tiny, tmp_path, git_commit="commitB_docs", code_sha256="changed").evidence(store)
+    assert json.loads((tmp_path / "val" / "ensemble.json").read_text())["git_commit"] == "commitB_docs"
+
+
+def test_a_new_ablation_keeps_the_run_and_a_retrained_one_is_measured_again(tiny, tmp_path):
+    store = tiny[0]["val"]
+    settings = {"git_commit": "c", "code_sha256": "same"}
+    _kept_run(tiny, tmp_path, **settings, ablation_checkpoint_sha256={}).evidence(store)
+    _spoil_ensemble_set(tmp_path, "val")
+    later = _kept_run(tiny, tmp_path, **settings, ablation_checkpoint_sha256={"no_divergence": "abl1"})
+    assert later.evidence(store)[0].errors[0] == 123.0
+    assert later.ablation_key("no_divergence") != _kept_run(
+        tiny, tmp_path, **settings, ablation_checkpoint_sha256={"no_divergence": "abl2"}
+    ).ablation_key("no_divergence")
+    with pytest.raises(ValueError, match="other settings"):
+        _kept_run(tiny, tmp_path, **settings | {"checkpoint_sha256": ["a", "other"]})
+
+
+def test_code_hash_follows_the_code_and_not_the_docs(tmp_path, monkeypatch):
+    monkeypatch.syspath_prepend(str(REPO / "scripts"))
+    from run_experiments import code_sha256
+
+    (tmp_path / "src" / "sandeha" / "demo").mkdir(parents=True)
+    (tmp_path / "scripts").mkdir()
+    (tmp_path / "docs").mkdir()
+    (tmp_path / "src" / "sandeha" / "a.py").write_text("x = 1")
+    (tmp_path / "scripts" / "run_experiments.py").write_text("y = 1")
+    start = code_sha256(tmp_path)
+    (tmp_path / "docs" / "BUILD_LOG.md").write_text("notes")
+    (tmp_path / "src" / "sandeha" / "demo" / "server.py").write_text("z = 1")
+    assert code_sha256(tmp_path) == start
+    (tmp_path / "src" / "sandeha" / "a.py").write_text("x = 2")
+    assert code_sha256(tmp_path) != start
+
+
 def test_plain_run_reads_the_files_a_real_run_reads(tiny, tmp_path):
     """Everything but the real data: manifest, normaliser, checkpoints, report and selection on disk."""
     stores, normalizer, config = tiny
@@ -382,15 +466,14 @@ def test_plain_run_reads_the_files_a_real_run_reads(tiny, tmp_path):
         "ensemble_sizes": [2], "sweep": {"periods": [3], "rates": [0.2]},
     }
     (tmp_path / "eval.yaml").write_text(json.dumps(settings))
-    done = subprocess.run(
-        [
-            sys.executable, "scripts/run_experiments.py", "--config", str(tmp_path / "eval.yaml"),
-            "--data-root", str(root), "--ensemble", str(tmp_path / "ensemble.json"),
-            "--selection", str(tmp_path / "selection.json"), "--run-root", str(tmp_path / "runs"),
-            "--progress", str(tmp_path / "progress"), "--device", "cpu", "--results", str(tmp_path / "results"),
-        ],
-        cwd=REPO, env=os.environ | {"CUDA_VISIBLE_DEVICES": ""}, capture_output=True, text=True, timeout=600,
-    )
+    command = [
+        sys.executable, "scripts/run_experiments.py", "--config", str(tmp_path / "eval.yaml"),
+        "--data-root", str(root), "--ensemble", str(tmp_path / "ensemble.json"),
+        "--selection", str(tmp_path / "selection.json"), "--run-root", str(tmp_path / "runs"),
+        "--progress", str(tmp_path / "progress"), "--device", "cpu", "--results", str(tmp_path / "results"),
+    ]
+    env = os.environ | {"CUDA_VISIBLE_DEVICES": ""}
+    done = subprocess.run(command, cwd=REPO, env=env, capture_output=True, text=True, timeout=600)
     assert done.returncode == 0, done.stdout[-2000:] + done.stderr[-3000:]
     assert "no_pushforward" in done.stdout  # A missing ablation is said to be missing.
     assert not (tmp_path / "results").exists()  # Without --final, nothing lands where results go.
@@ -401,6 +484,17 @@ def test_plain_run_reads_the_files_a_real_run_reads(tiny, tmp_path):
         assert list(result["sets"]) == ["val"] and not result["final"]
     ablation = json.loads((written / "exp_ablation.json").read_text())
     assert ablation["ablations_run"] == ["no_divergence"]
+    assert ablation["code_sha256"] and ablation["run_commits"] == [ablation["git_commit"]]
+
+    # An ablation that finishes after the run began joins it, and costs no other rollouts.
+    checkpoint(tmp_path / "runs" / "ablation" / "no_pushforward" / "best.pt", 8)
+    again = subprocess.run(command + ["--experiments", "ablation"], cwd=REPO, env=env, capture_output=True, text=True, timeout=600)
+    assert again.returncode == 0, again.stdout[-2000:] + again.stderr[-3000:]
+    assert "val/ablation_no_pushforward" in again.stdout
+    assert "val/single:" not in again.stdout and "val/ablation_no_divergence" not in again.stdout
+    ablation = json.loads((written / "exp_ablation.json").read_text())
+    assert ablation["ablations_run"] == ["no_divergence", "no_pushforward"]
+    assert set(ablation["ablation_checkpoint_sha256"]) == {"no_divergence", "no_pushforward"}
 
 
 @pytest.fixture(scope="module")
