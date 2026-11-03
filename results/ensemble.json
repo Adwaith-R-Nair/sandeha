@@ -1,0 +1,123 @@
+{
+ "arch": "unet",
+ "max_minutes": 48,
+ "seeds": [
+  0,
+  1,
+  2,
+  3,
+  4
+ ],
+ "split": "val",
+ "members": [
+  {
+   "seed": 0,
+   "trained_seed": 0,
+   "retrained_because": null,
+   "passed": true,
+   "checkpoint": "runs/ensemble/seed_0/best.pt",
+   "checkpoint_sha256": "3ef91bb4d83e0adf7f5f5f022c1972711d74e06eedbf9824773c52a5d26d4fba",
+   "check": {
+    "checkpoint_step": 30000,
+    "start": 20,
+    "steps": 100,
+    "scenes": 30,
+    "blown_up_frames": 0,
+    "finite": true,
+    "error": 0.6205848761844294,
+    "persistence_error": 1.126561228128771,
+    "improved": true,
+    "passed": true,
+    "reason": null
+   }
+  },
+  {
+   "seed": 1,
+   "trained_seed": 1,
+   "retrained_because": null,
+   "passed": true,
+   "checkpoint": "runs/ensemble/seed_1/best.pt",
+   "checkpoint_sha256": "d9a1dfd8a28585e95352aacb6cdf6292e7455d1049abc6cc99ca0d9ebc2d2f57",
+   "check": {
+    "checkpoint_step": 31000,
+    "start": 20,
+    "steps": 100,
+    "scenes": 30,
+    "blown_up_frames": 0,
+    "finite": true,
+    "error": 0.6052822661146056,
+    "persistence_error": 1.126561228128771,
+    "improved": true,
+    "passed": true,
+    "reason": null
+   }
+  },
+  {
+   "seed": 2,
+   "trained_seed": 2,
+   "retrained_because": null,
+   "passed": true,
+   "checkpoint": "runs/ensemble/seed_2/best.pt",
+   "checkpoint_sha256": "4db331b8e554fdf081d826d24e1c26c36d981e1ad796c213d9870ba2012ad35d",
+   "check": {
+    "checkpoint_step": 31254,
+    "start": 20,
+    "steps": 100,
+    "scenes": 30,
+    "blown_up_frames": 0,
+    "finite": true,
+    "error": 0.615315162913641,
+    "persistence_error": 1.126561228128771,
+    "improved": true,
+    "passed": true,
+    "reason": null
+   }
+  },
+  {
+   "seed": 3,
+   "trained_seed": 3,
+   "retrained_because": null,
+   "passed": true,
+   "checkpoint": "runs/ensemble/seed_3/best.pt",
+   "checkpoint_sha256": "0abb677b2c47279c2bb60f61f042471c083a46fe5ac69af4dd66b6362b8e53c9",
+   "check": {
+    "checkpoint_step": 30000,
+    "start": 20,
+    "steps": 100,
+    "scenes": 30,
+    "blown_up_frames": 0,
+    "finite": true,
+    "error": 0.6396753671544139,
+    "persistence_error": 1.126561228128771,
+    "improved": true,
+    "passed": true,
+    "reason": null
+   }
+  },
+  {
+   "seed": 4,
+   "trained_seed": 4,
+   "retrained_because": null,
+   "passed": true,
+   "checkpoint": "runs/ensemble/seed_4/best.pt",
+   "checkpoint_sha256": "1b06bd4afc1eccde0c6401147e23095e1bd1bf500de122108330784739458e68",
+   "check": {
+    "checkpoint_step": 29000,
+    "start": 20,
+    "steps": 100,
+    "scenes": 30,
+    "blown_up_frames": 0,
+    "finite": true,
+    "error": 0.6320123609780178,
+    "persistence_error": 1.126561228128771,
+    "improved": true,
+    "passed": true,
+    "reason": null
+   }
+  }
+ ],
+ "complete": true,
+ "git_commit": "3d6f6edda04930326b78565ccbca819c5a56208f",
+ "git_dirty": false,
+ "data_manifest_sha256": "ac363e1f582a4719ef15e4c6ec52f4bcfaa61836eba6fa6f328576af4d4544a6"
+}
