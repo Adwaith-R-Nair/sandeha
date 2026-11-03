@@ -1,0 +1,109 @@
+{
+ "git_commit": "890c6ffac970c00ca5099156b2905a7d567274f5",
+ "git_dirty": true,
+ "data_git_commit": "fb27f486bad5643324dc27d33f6dcb0fc583def2",
+ "seed": 20261104,
+ "dt": 0.01,
+ "fork_frames": 5,
+ "pass_factor": 2.0,
+ "splits": {
+  "train": {
+   "largest_travel": 9.953893661499023,
+   "thinnest_wall_cells": 10.24,
+   "margin_to_thinnest_wall": 0.027940072119236013,
+   "named": [],
+   "controls": [],
+   "passed": true
+  },
+  "val": {
+   "largest_travel": 14.576007843017578,
+   "thinnest_wall_cells": 10.24,
+   "margin_to_thinnest_wall": -0.4234382659196853,
+   "named": [
+    {
+     "scene": 12,
+     "largest_travel": 14.576007843017578,
+     "fork_frame": 89,
+     "density_difference_by_frame": [
+      0.035632550716400146,
+      0.05026456341147423,
+      0.06660404056310654,
+      0.08301369100809097,
+      0.09906712174415588
+     ],
+     "figure": 0.09906712174415588,
+     "passed": true,
+     "rendering": "figures/travel_rule_val_00012.png"
+    }
+   ],
+   "controls": [
+    {
+     "scene": 18,
+     "largest_travel": 1.9894602298736572,
+     "fork_frame": 98,
+     "density_difference_by_frame": [
+      0.008806824684143066,
+      0.014015188440680504,
+      0.01785401627421379,
+      0.020932376384735107,
+      0.02369479462504387
+     ],
+     "figure": 0.02369479462504387
+    },
+    {
+     "scene": 9,
+     "largest_travel": 2.309542179107666,
+     "fork_frame": 111,
+     "density_difference_by_frame": [
+      0.035815007984638214,
+      0.04946930706501007,
+      0.05973537638783455,
+      0.06925961375236511,
+      0.07565262913703918
+     ],
+     "figure": 0.07565262913703918
+    },
+    {
+     "scene": 17,
+     "largest_travel": 2.69437313079834,
+     "fork_frame": 92,
+     "density_difference_by_frame": [
+      0.022860286757349968,
+      0.03536779806017876,
+      0.044303420931100845,
+      0.05198504403233528,
+      0.05950089171528816
+     ],
+     "figure": 0.05950089171528816
+    }
+   ],
+   "passed": true,
+   "largest_control_figure": 0.07565262913703918
+  },
+  "test_a": {
+   "largest_travel": 5.0382080078125,
+   "thinnest_wall_cells": 10.24,
+   "margin_to_thinnest_wall": 0.5079874992370605,
+   "named": [],
+   "controls": [],
+   "passed": true
+  },
+  "test_b": {
+   "largest_travel": 5.144801616668701,
+   "thinnest_wall_cells": 10.24,
+   "margin_to_thinnest_wall": 0.49757796712219715,
+   "named": [],
+   "controls": [],
+   "passed": true
+  },
+  "test_c": {
+   "largest_travel": 7.05108118057251,
+   "thinnest_wall_cells": 10.24,
+   "margin_to_thinnest_wall": 0.31141785345971584,
+   "named": [],
+   "controls": [],
+   "passed": true
+  }
+ },
+ "data_accepted": true
+}
