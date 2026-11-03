@@ -857,3 +857,13 @@ Built `src/sandeha/demo/server.py`, `scripts/run_demo.py` and `scripts/bench_dem
 ## 2026-11-03: Demo server fix (threshold without `tau`)
 
 A `{"type": "threshold"}` message passed `_checked`, raised `KeyError` on the simulation thread and stopped the server with exit 1. `_checked` now refuses it, so the client gets the same treatment as any other bad message, and null stays the only way to say "never". `tests/demo/test_server.py` covers it, both directly and over a WebSocket.
+
+## 2026-11-03: Phase 6, Task 9 code (metrics, rollouts, experiments, figures, results)
+
+Built `src/sandeha/eval/{metrics,rollout,experiments}.py`, `scripts/run_experiments.py`, `scripts/make_figures.py`, `scripts/render_results.py` and `configs/eval.yaml`. Decision is B54. Tested on the CPU with small randomly initialised models on tiny solved data, with no trained model and no real split opened. `--dry-run` runs one tiny split under every set's name, and takes a threshold even if its tiny selection chose **never**, so that the baselines and the oracle run. The dry run's numbers measure nothing.
+
+### Open items
+
+- **Not run on real data:** `results/handoff_selection.json`, the `exp_*.json` files, their figures and `docs/RESULTS.md` don't exist yet. The plan's remaining steps are the 3-scene validation dry run, the selection, recording the code commit in `PREREGISTRATION.md`, then `--final` once.
+- **Evaluation time isn't measured,** including the oracle's search of up to 9 rollout sets per set or side, which the preregistration asks for. Read it from the log of the validation run, against the budget, before starting `--final`.
+- **The real-data path below `--final` hasn't run.** A test runs the plain path through a real manifest, normaliser, checkpoints and report on tiny data. `--final` differs only in opening test splits, which `test_experiments_use_val_unless_final` checks with a stand-in.
