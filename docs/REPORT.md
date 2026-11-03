@@ -193,7 +193,7 @@ Chaos as a cause of error staying after a hand-off can't be settled, because sav
 - **One machine.** Times in milliseconds are single measurements on one laptop GPU.
 - **Typed numbers.** The text in this report and the analysis in `docs/RESULTS.md` is typed, not generated, so it has to be checked again if a result file changes.
 - **The public track is very small.** It has 9 test trajectories, from a published simulation, with no hand-off.
-- **Test coverage.** The last recorded test run was on a fresh clone at commit `9c4bac7`, with 573 passed and 1 skipped. It left out `tests/data/test_travel.py`, which wasn't rerun there. The same check installed the project, unpacked the weights from release `v1.0` and started the trained demo.
+- **Test coverage.** A fresh clone at commit `9c4bac7` gave 573 passed and 1 skipped, leaving out `tests/data/test_travel.py`. That file passed in a separate run with `tests/demo` at the end of the build, 84 passed (`BUILD_LOG.md`). The same check installed the project, unpacked the weights from release `v1.0` and started the trained demo.
 
 ## 8. Conclusion
 

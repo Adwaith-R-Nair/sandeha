@@ -27,7 +27,7 @@ The main idea did not work. **Handing off to the solver when doubt was high did 
 
 ### Must hold: solver tests and locked test sets
 
-**Solver tests.** The last recorded test run was on a fresh clone at commit `9c4bac7`: 573 passed and 1 skipped (`BUILD_LOG.md`). It left out `tests/data/test_travel.py`, which wasn't rerun there. That file was in the full run at `dd78b8d`, 321 passed, and it changed afterwards at `446d45f`, so `BUILD_LOG.md` has no run of its current version. `src/sandeha/physics/solver.py` has not changed since `2b2df8a`.
+**Solver tests.** A full test run was on a fresh clone at commit `9c4bac7`: 573 passed and 1 skipped (`BUILD_LOG.md`). It left out `tests/data/test_travel.py`, whose current version passed in a separate run with `tests/demo` at the end of the build, 84 passed (`BUILD_LOG.md`). `src/sandeha/physics/solver.py` has not changed since `2b2df8a`.
 
 **Locked test sets.** The hand-off choice was made on validation and committed in `3a16f42`, before any test split opened. `--final` ran once, from 19:56 on 2026-11-03 to 01:02 on 2026-11-04, and exited with 0 (`runs/jobs.log`, which isn't tracked). No rollout was repeated afterwards, and the post-hoc work opened no test split. Three things are the known exceptions or limits:
 
