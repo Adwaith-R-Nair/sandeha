@@ -407,6 +407,44 @@ Each major decision, the alternatives and the reason. Status is **Default** for 
 - **Reason:** without this, re-running after a fix returned the old numbers stamped with the fix's commit, and an ablation finishing after `--final` began meant deleting the run and opening the test splits again. No preregistered rule changed.
 - **Cost:** any edit to the hashed code reruns every set on the next run, even one that can't change a number, so `--final` must not restart after an unrelated code commit unless a further pass over the test splits is intended. `checkpoint_sha256` in results now counts only the ensemble's members. `select_handoff` still reuses its runs across commits and only lists them.
 
+### B57: The written analysis sits around the generated block (2026-11-04)
+
+- **Decision:** `docs/RESULTS.md` keeps the block from `render_results.py` unchanged. The analysis goes before and after it, and rendering leaves that text alone. Its numbers are typed, each with its source file named beside it.
+- **Alternatives:** generating the analysis as well, which can't state a judgement such as whether a hope held. Keeping the analysis in a separate file, which separates a weak result from the table it reads.
+- **Reason:** the plan asks for a written analysis of every section 6.5 hope, and the numbers in the block must stay generated.
+- **Cost:** a typed number can go stale, so the text has to be checked again if a result file changes. The written numbers were checked against the files before this was committed.
+
+### B58: The final run's commit stamp differs from the recorded commit, and the code doesn't (2026-11-04)
+
+- **Decision:** `PREREGISTRATION.md` names `3a16f42` as the code commit, and the results are stamped `31f57dc`. This stays as it is, and is stated here and in `RESULTS.md`.
+- **Alternatives:** editing the preregistration after the run, which would rewrite the record.
+- **Reason:** `31f57dc` is the commit that recorded `3a16f42`. It changes only `docs/BUILD_LOG.md`, `docs/PREREGISTRATION.md` and `results/val_rehearsal/`, none of them code, and the run started from it on a clean tree (`git_dirty` false in every `exp_*.json`). No test split opened between the two.
+
+### B59: Post-hoc work is kept apart and labelled (2026-11-04)
+
+- **Decision:** the analysis of why hand-off fell short is in `scripts/posthoc_analysis.py` and `results/posthoc_analysis.json`, and every statement drawn from it is labelled as post-hoc and exploratory. It reads saved rollouts only. It changes no headline result, chooses nothing, and isn't in the generated block.
+- **Alternatives:** leaving failures with no explanation, against section 6.5, which asks for analysis of why. New rollouts on the test sets, which `--final`'s single-run rule forbids.
+- **Reason:** explaining a result on the data that produced it can suggest a reason but can't confirm one. Readers must be able to see which is which.
+- **Cost:** no explanation here is confirmed. The intervals aren't corrected for the number of comparisons tried.
+
+### B60: No further signal was tried (2026-11-04)
+
+- **Decision:** section 6.5 allows up to one further signal, chosen on validation only. None was tried for this submission. The no-ensemble divergence signal stays a measured comparison, and was never used for hand-off.
+- **Alternatives:** trying that divergence signal for hand-off on validation. Its case rests on having seen `test_b` score it higher, so the choice wouldn't be free of the test sets, and those sets can't judge the result again in any case. A per-scene budget or a threshold scaled to the flow, for the same reason.
+- **Reason:** a new rule needs validation rollouts and new test scenes to mean anything, and the final run must not repeat. These stay as untested ideas in `RESULTS.md`.
+
+### B61: How the coarse-solver hope is judged (2026-11-04)
+
+- **Decision:** "beats the coarse solver" is judged per set and side from the preregistered primary window, with 100-frame error, usable frames and vorticity correlation given beside it. The verdict is "partly". The wording "for the same compute time" is stated as not directly tested, as no coarse run was limited to the ensemble's time.
+- **Alternatives:** a single yes from `test_a` and `test_b`, which hides both sides of `test_c` and the longer range on `test_b`.
+- **Reason:** the ensemble wins inside the window on `test_a` and `test_b`, loses clearly on the low side of `test_c`, and isn't ahead on the high side. The speed figure is given as about 13 to 17 times from the three reference timings, as they differ by set.
+
+### B62: Public-track places are marked until results exist (2026-11-04)
+
+- **Decision:** `RESULTS.md` and `MODEL_CARD.md` each have a section beginning "PUBLIC TRACK PENDING", holding no numbers. Main-track text says that it covers only the project's own generated data.
+- **Alternatives:** leaving the track out until it finishes, which could read as if it had been dropped.
+- **Reason:** `results/exp_well.json` doesn't exist yet, and no number may be written before its file does.
+
 ## Architecture selection
 
 U-Net won on validation rollout error over 20 steps from frame 20, with equal 40 minute budgets on seed 0: U-Net 0.0915, FNO 0.1258, persistence 0.6689 (`results/arch_selection.json`). The ensemble uses the U-Net. The `git_commit` in that file is the commit when the job wrote its result. Later commits in the job's lifetime added evaluation and demo code and left training code unchanged.

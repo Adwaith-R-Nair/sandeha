@@ -887,3 +887,37 @@ Both were reproduced on tiny CPU data first. After a kept set's error was change
 All four experiments ran on validation in 85 minutes with no crash (`results/val_rehearsal/`). The ablation section of the rehearsal has no reduced models, because the rehearsal's `--run-root` pointed away from `runs/ablation`. The final run uses the default.
 
 What it showed on validation at the frozen threshold, before any test split opened: doubt-based hand-off scored 0.2362, the fixed schedule 0.2451 (difference CI -0.0230 to 0.0049, not a win) and random 0.2520 (a win). Doubt-based hand-off took 97 ms per frame and the fixed schedule 72 ms, at about the same solver share. No code changed as a result of these numbers.
+
+## 2026-11-03 to 2026-11-04: Final run
+
+`scripts/run_experiments.py --final` ran once, from 19:56 on 2026-11-03 to 01:02 on 2026-11-04, and exited with 0 after 18326 s (`runs/jobs.log`). Each `exp_*.json` is stamped `31f57dc` with a clean tree, data manifest `ac363e1f582a` and 5 checkpoints. The results and figures were committed in `30c01e2`, with no rollout repeated and no code changed. B58 covers the commit stamp.
+
+**What it showed, in full in `RESULTS.md`:** doubt-based hand-off at the frozen threshold beat neither baseline on any set. On `test_b` it scored 0.2881 and the fixed schedule 0.2652, a difference of 0.0229 [0.004, 0.041]. The hoped-for result failed, and is reported as a finding.
+
+The demo benchmark then ran with the trained ensemble: 61.3 frames per second with 5 members in AI mode, against a target of 15 (`results/demo_bench.json`, `1487b27`).
+
+## 2026-11-04: Post-hoc analysis
+
+Added `scripts/posthoc_analysis.py`, `results/posthoc_analysis.json` and 5 `posthoc_*` figures in `8391e14`. This is exploratory and wasn't preregistered (B59). It ran no new rollouts, opened no test split and used no GPU.
+
+The saved rollouts reproduce every reported set score. The largest supported reason for the `test_b` loss is which scenes got the solver: 19 of 30 got no hand-off in the window. Late hand-offs, the reason expected going in, explain little. It stays unconfirmed, since it comes from the same test sets.
+
+## 2026-11-04: Written results and model card
+
+Added the written analysis around the generated block in `docs/RESULTS.md`, stating for each section 6.5 item whether it held, and added `docs/MODEL_CARD.md`. Decisions are B57 to B62.
+
+| Check, with the GPU left to public-track training | Result |
+|---|---|
+| `render_results.py` into a scratch copy, before the analysis was added | Identical to the committed file |
+| `render_results.py` into a scratch copy, after it was added | Identical to the new file, so the written text survives rendering |
+| `make_figures.py` into a scratch folder | 8 figures written |
+| `posthoc_analysis.py` into a scratch folder | JSON identical to the committed file, apart from the commit it records |
+| `pytest tests/physics tests/test_repo.py` with no visible GPU | 48 failed and 2 errors, reporting "No CUDA GPUs are available", because these tests name the GPU directly. It says nothing about the solver |
+
+**Corrected in writing up:** a working summary said the ensemble was more accurate than the coarse solver except on the low side of `test_c`, and about 14 times faster. The files also show no lead on the high side (0.526 against 0.516), and a coarse solver ahead on `test_b` at 100 frames. The reference timings give 13 to 17 times. The written text follows the files.
+
+### Open items
+
+- **Rerun the full test suite on the GPU** when public-track training ends. The last recorded full run is 321 passed at `dd78b8d`, and later commits added tests of their own. `src/sandeha/physics/solver.py` hasn't changed since before that run.
+- **Fill in the sections marked PUBLIC TRACK PENDING** from `results/exp_well.json` once it exists, in `RESULTS.md` and `MODEL_CARD.md`.
+- **Stale text outside this task:** `README.md` still says no results exist, the status line in `HLD.md` says no experiment has run, and `REPORT.md` isn't written.
