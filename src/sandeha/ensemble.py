@@ -40,8 +40,8 @@ class Ensemble:
     def step(self, x: Tensor) -> EnsembleOut:
         """One step from a model input ``(B,6,H,W)``."""
         members = torch.stack([apply_step(model, x, self.normalizer) for model in self.models])
-        # Taken relative to the first member, since the mean of equal values can round. Equal members
-        # then have a doubt of exactly zero. The variance is the population's, so one member has zero.
+        # Taken relative to the first member, so equal members give exactly zero without relying on how
+        # a backend rounds their mean. The variance is the population's, so one member has zero.
         encoded = self.normalizer.encode(members)
         variance = (encoded - encoded[:1]).var(dim=0, unbiased=False)
         doubt_map = variance.sqrt().mean(dim=1, keepdim=True)

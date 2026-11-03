@@ -42,7 +42,7 @@ def model_input(obstacle=None, batch: int = 2, size: int = 8) -> torch.Tensor:
 
 
 def test_identical_members_zero_doubt(normalizer):
-    # Averaging five equal values can round, so this catches a variance taken around the mean.
+    # Five equal values: their explicit mean can round, and doubt must still be exactly zero.
     out = Ensemble([Constant(0.1) for _ in range(5)], normalizer).step(model_input())
     assert out.doubt_map.shape == (2, 1, 8, 8)
     assert (out.doubt_map == 0).all()
