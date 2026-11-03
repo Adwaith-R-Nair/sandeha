@@ -812,3 +812,7 @@ Built `scripts/select_arch.py`, `scripts/train_ensemble.py`, `src/sandeha/train/
 
 - **Run the selection and the ensemble**, then record the winner in `docs/DECISIONS.md` and commit `results/arch_selection.json`.
 - **The ablations train for 25 minutes and the ensemble's members for 48.** The plan names no 25-minute baseline, so Task 9 must say so when comparing them.
+
+## 2026-11-03: Phase 5, Task 7 (ensemble and doubt)
+
+Built `src/sandeha/ensemble.py` with `Ensemble`, `EnsembleOut` and `doubt_score`. Decision is B50. Tested on CPU with stub members and small randomly initialised U-Nets, with no trained model and no split opened: `tests/test_ensemble.py` gave 24 passed. The full test suite wasn't rerun, and no existing module changed.
