@@ -1,0 +1,15 @@
+{
+ "git_commit": "446d45f29accb353c8f840e7f67c86595d5e2dfb",
+ "git_dirty": false,
+ "saved_git_commit": "96c4ac36531ba3666d2073dfd97e170c3d0b562c",
+ "scene_index": 7,
+ "late_frame": 90,
+ "saved_travel_old_measure": 9.968957901000977,
+ "saved_frame_old_measure": 90,
+ "travel_current_measure": 12.605530738830566,
+ "frame_current_measure": 90,
+ "thinnest_wall_cells": 10.24,
+ "margin_to_thinnest_wall": -0.23100886121392247,
+ "above_thinnest_wall": true,
+ "converged": true
+}

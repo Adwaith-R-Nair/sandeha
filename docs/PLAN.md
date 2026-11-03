@@ -35,14 +35,15 @@
 
 ```
 configs/                 data.yaml  train_unet.yaml  train_fno.yaml  eval.yaml  well.yaml
-scripts/                 long_job.sh  check_solver.py  generate_data.py  estimate_generation.py  train.py  select_arch.py  run_experiments.py
+scripts/                 long_job.sh  check_solver.py  generate_data.py  estimate_generation.py  check_travel.py  spot_check.py  train.py  select_arch.py  run_experiments.py
                          make_figures.py  render_results.py  train_well.py  eval_well.py  run_demo.py  bench_demo.py
 src/sandeha/
   physics/solver.py      SmokeSolver, SmokeState
   physics/scenes.py      Scene, sample_scene, shape families
   data/store.py          on-disk format, split guard
   data/generate.py       generation, resuming, manifest
-  data/travel.py         the spot-check's travel rule
+  data/travel.py         the spot-check's travel rule, and the gate on its controls
+  data/spotcheck.py      the spot-check's rendering and checks
   data/dataset.py        StepDataset, Normalizer
   models/unet.py         UNet
   models/fno.py          FNO2d
@@ -145,7 +146,7 @@ def sample_scene(rng: np.random.Generator, res: int, split: str) -> Scene: ...
 
 ### Task 4: Generation and test-set lock
 
-**Files:** `src/sandeha/data/store.py`, `src/sandeha/data/dataset.py`, `src/sandeha/data/travel.py`, `scripts/generate_data.py`, `scripts/check_travel.py`, `configs/data.yaml`, `docs/PREREGISTRATION.md`, tests
+**Files:** `src/sandeha/data/store.py`, `src/sandeha/data/dataset.py`, `src/sandeha/data/travel.py`, `src/sandeha/data/spotcheck.py`, `scripts/generate_data.py`, `scripts/check_travel.py`, `scripts/spot_check.py`, `configs/data.yaml`, `docs/PREREGISTRATION.md`, tests
 
 **Produces:**
 ```python
@@ -173,8 +174,9 @@ Starting sizes, scaled down if the measured solver speed would exceed the 1.5 h 
   - `test_item_shapes`: channels and shapes as above.
 - [ ] Implement. Writes are atomic per scene. `data/manifest.json` records seeds, config, git commit and SHA-256 of every split.
 - [ ] Before generation, write `docs/PREREGISTRATION.md`. It fixes: primary metric, horizon 50 AI steps from start frame 20 (extended only if solver checks show the plume hasn't reached typical obstacles by then), secondary metrics, within-time correlation as the evidence measure, bad-frame threshold rule, threshold rule (Task 8), baseline budget rule, test-set policy, `test_c` results reported per side as well as pooled, and how late obstacles after the window are treated. Commit it **before** any model exists.
+- [ ] Measure the rule's controls with `scripts/long_job.sh travel-controls uv run python scripts/check_travel.py --control-sample`, commit the result, and log and judge its figures. Generation refuses to start without it.
 - [ ] Run `scripts/long_job.sh data uv run scripts/generate_data.py --config configs/data.yaml`.
-- [ ] Spot-check: render a sample scene from each split, and check stats, NaN count (must be 0), the manifest, and the rule in `docs/PREREGISTRATION.md` for travel above the thinnest wall, with `uv run python scripts/check_travel.py --data-root data`. Log timings. Commit.
+- [ ] Spot-check: render a sample scene from each split, and check stats, NaN count (must be 0) and the manifest, with `uv run python scripts/spot_check.py --data-root data`, and inspect the figure. Check the rule in `docs/PREREGISTRATION.md` for travel above the thinnest wall, with `uv run python scripts/check_travel.py --data-root data`. Log timings. Commit.
 
 ---
 

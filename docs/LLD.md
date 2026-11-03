@@ -159,9 +159,13 @@ Files under `data/`, none tracked:
 | Lock | `open_split` checks the lock before it touches any file, and then every checksum. It takes seconds on the largest split |
 | Resuming | Scene seeds depend only on the master seed, split and index. Batches are fixed index ranges, and a part-finished batch reruns whole, so a resumed run does the same arithmetic. Byte-identical result, tested with a real SIGKILL. **Same config and commit required: commit nothing between stopping a run and resuming it** |
 | Stops | Non-finite data as stored, which covers `float16` overflow, stops the run with nothing from that batch stored. A dirty working tree stops it before anything starts, unless `--allow-dirty`, which the manifest records. Unconverged solves don't stop it, and are counted in the manifest for the spot-check |
-| Finished data | Never regenerated. Replacing a locked set means deleting `data/` by hand |
+| Finished data | Never regenerated. Replacing a locked set means deleting `data/` by hand. A rerun only clears scene files that a crash left behind after the manifest was written |
+| Controls gate | `scripts/generate_data.py` calls `check_controls` first, and refuses without `results/travel_controls.json` for this config's physics, from committed code. Only `--allow-dirty` outside `data/` skips it, as that can't be the real dataset. The check is in the script, so calling `generate()` directly, as the estimate and the tests do, doesn't meet it |
+| Disk | Scene files and final files coexist until the end of a run, so peak disk is about twice the dataset. `results/generation_estimate.json` records `planned_peak_disk_gb` |
 
 `uv run python scripts/estimate_generation.py` measures a small sample with a different master seed, and writes `results/generation_estimate.json`.
+
+`uv run python scripts/spot_check.py --data-root data` checks every split after generation and draws each one's scene 0 and first late-obstacle scene. It opens test splits under the preregistration's exception, and writes `results/spot_check.json` and `results/figures/spot_check.png`.
 
 ## Models and training
 

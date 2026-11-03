@@ -308,3 +308,30 @@ Each major decision, the alternatives and the reason. Status is **Default** for 
 - **Decision:** `read_manifest` requires `data/manifest.json` to match `results/data_manifest.json`, and is what `open_split` and `Normalizer.load` read. `Normalizer.load` compares a normaliser beside a manifest with the checksum there.
 - **Alternatives:** an argument naming the copy, which every caller must remember. Or comparing with the copy in the last commit, which would block the spot-check, since the copy is committed after it.
 - **Reason:** a split replaced with its manifest passed the lock, and an edited normaliser went unnoticed. **Limits:** only the default root `data/` is compared with the copy, so `--final` must use it. The comparison reads the working file, so replacing all of them together passes this check, and shows only as a change to a tracked file and in `git_dirty`.
+
+### B42: Generation enforces the controls' measuring (2026-11-03). Changed after review
+
+- **Decision:** `scripts/generate_data.py` calls `check_controls` before it starts. It needs `results/travel_controls.json` from committed code, with a finite figure per split and the same grid, step, frames and solver settings as the config. `--allow-dirty` skips this only outside `data/`.
+- **Alternatives:** a check inside `generate()`, which would also bind the estimate and every tiny test that never needs it. Or leaving the gate as a step in the plan.
+- **Reason:** B38's order rested on memory alone, and generation could start without it.
+- **Limits:** the file isn't compared with the current code's commit, and nothing checks that its figures were read. Calling `generate()` directly doesn't meet the gate.
+
+### B43: The spot-check has a command, and the rule's step 4 has its rendering (2026-11-03). Changed after review
+
+- **Decision:** `scripts/spot_check.py` checks every split and draws each split's scene 0 and first late-obstacle scene, chosen in advance. `scripts/check_travel.py --data-root` draws each named scene at both step sizes, with their difference, reproduced from its seed.
+- **Alternatives:** drawing named scenes from stored fields, which the rule reads none of, and which hold only one step size. Or choosing scenes to draw after looking at them.
+- **Reason:** step 4 required a rendering that nothing wrote, and the plan's spot-check had no tool.
+
+### B44: `test_c`'s controls may be one side. Rule unchanged, stated, and measured per side (2026-11-03). Open
+
+- **Decision:** the rule's controls stay the lowest travel in the split. Every `test_c` figure states its side, and `--control-sample` also measures each side's lowest-travel controls.
+- **Alternatives:** drawing `test_c`'s controls from the named scene's side, which is a new rule made from reasoning alone, and which leaves a side with fewer than 3 scenes short of controls. Or saying nothing.
+- **Reason:** low-side controls against a high-side named scene could fail on flow speed alone, and a failure regenerates every split. No figure for this exists yet. The control sample gives one before generation, as with B38.
+
+### B45: The largest sampled scene is above the wall on the current measure (2026-11-03). Measured after review
+
+- **Decision:** no rule changes. The rule was written to cover this. `results/travel_recheck.json` is added, from `scripts/check_travel.py --recheck-largest`.
+- **Alternatives:** rerunning all 62 scenes of `results/travel_check.json`, about 5 minutes of the planned grid, left for later since the sample below gives ordinary scenes on the current measure.
+- **Reason:** B39 said this scene might be above the wall. It is, at 12.61 cells against 10.24. It was run alone, not in its first batch of 16.
+- **Cost:** `results/travel_check.json` stays on the old measure, and is labelled as such in `docs/BUILD_LOG.md`.
+
