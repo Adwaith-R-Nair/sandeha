@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sandeha: smoke simulator with doubt</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="style.css">
+</head>
+<body data-source="none">
+<header class="head">
+  <div class="title">
+    <h1>Sandeha</h1>
+    <p id="summary">Neural models run this smoke. When they disagree too much, the physics solver takes over.</p>
+    <p id="weights" class="warning" hidden>Untrained models: this smoke and doubt are not results.</p>
+  </div>
+  <p id="source-text" class="only-reader" role="status" aria-live="polite"></p>
+  <div class="annunciator" aria-hidden="true">
+    <div id="lamp-ai" class="lamp"><span class="legend">AI</span><span class="note">in control</span></div>
+    <div id="lamp-physics" class="lamp"><span class="legend">PHYSICS</span><span class="note">in control</span></div>
+  </div>
+</header>
+
+<main class="bench">
+  <figure class="view">
+    <figcaption><strong>Smoke</strong> <span>Draw on it</span></figcaption>
+    <div class="window">
+      <canvas id="smoke" width="128" height="128" tabindex="0" aria-label="Smoke. Draw solids here. Arrow keys move the brush, Space paints."></canvas>
+      <div class="ring" hidden></div>
+    </div>
+  </figure>
+
+  <figure class="view">
+    <figcaption><strong>Doubt</strong> <span id="members"></span>
+      <span class="scale"><i>0</i><b aria-hidden="true"></b><i id="scale-top"></i></span>
+    </figcaption>
+    <div class="window">
+      <canvas id="doubt" width="128" height="128" tabindex="0" aria-label="Doubt, where the models disagree. Draw solids here too."></canvas>
+      <div class="ring" hidden></div>
+    </div>
+  </figure>
+
+  <section class="strip" aria-label="Doubt over time, and the threshold">
+    <div class="strip-text">
+      <strong>Doubt over time</strong>
+      <span class="key"><i class="k-ai"></i>AI <i class="k-physics"></i>Physics</span>
+      <output id="tau-text" for="tau"></output>
+    </div>
+    <canvas id="trace"></canvas>
+    <div class="slider">
+      <input id="tau" type="range" min="0" max="100" step="1" value="50" aria-label="Hand-off threshold. The top means never.">
+      <span class="slider-top">Never</span>
+      <span class="slider-bottom">Always</span>
+    </div>
+  </section>
+
+  <aside class="panel">
+    <dl class="readouts">
+      <div><dt>Frames per second</dt><dd id="fps">0.0</dd></div>
+      <div><dt>Frames by solver</dt><dd id="share">0%</dd></div>
+    </dl>
+
+    <fieldset>
+      <legend>Who runs the smoke</legend>
+      <div class="choice">
+        <label><input type="radio" name="mode" value="auto"><span>By doubt</span></label>
+        <label><input type="radio" name="mode" value="ai"><span>AI only</span></label>
+        <label><input type="radio" name="mode" value="solver"><span>Physics only</span></label>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Draw solids</legend>
+      <div class="choice">
+        <label><input type="radio" name="tool" value="brush" checked><span>Brush</span></label>
+        <label><input type="radio" name="tool" value="erase"><span>Erase</span></label>
+      </div>
+      <div class="choice sizes">
+        <label><input type="radio" name="size" value="0.02"><span>Fine</span></label>
+        <label><input type="radio" name="size" value="0.045" checked><span>Medium</span></label>
+        <label><input type="radio" name="size" value="0.09"><span>Wide</span></label>
+      </div>
+    </fieldset>
+
+    <fieldset class="presets">
+      <legend>Start from a shape</legend>
+      <div class="shapes">
+        <span class="group">In training</span>
+        <button type="button" data-preset="circle">Circle</button>
+        <button type="button" data-preset="rectangle">Box</button>
+        <button type="button" data-preset="wall">Wall</button>
+      </div>
+      <div class="shapes unseen">
+        <span class="group">Never seen</span>
+        <button type="button" data-preset="star">Star</button>
+        <button type="button" data-preset="letter">Letter</button>
+        <button type="button" data-preset="blob">Blob</button>
+      </div>
+    </fieldset>
+
+    <div class="restart">
+      <button type="button" data-preset="empty">Empty box</button>
+      <button type="button" id="reset">Reset</button>
+    </div>
+  </aside>
+</main>
+
+<div id="connection" class="connection" role="alert" hidden></div>
+<script src="app.js"></script>
+</body>
+</html>

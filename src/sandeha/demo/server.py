@@ -7,8 +7,9 @@ Protocol at ``/ws``. Lengths are in domain units, the unit square, with row 0 at
 
 - Server to client, binary: a little-endian ``uint32`` header length, a JSON header, then ``res * res``
   bytes each of density, doubt and obstacle (0 or 255). The header holds ``frame, source, doubt, tau,
-  fps, solver_share, mode, members, weights, res``. ``doubt`` and ``tau`` are null when infinite or
-  not a number. ``weights`` is ``"random"`` for untrained models, which the page must disclose.
+  fps, solver_share, mode, members, weights, res, doubt_scale, preset``. ``doubt`` and ``tau`` are null
+  when infinite or not a number. ``weights`` is ``"random"`` for untrained models, which the page must
+  disclose. A doubt byte of 255 means ``doubt_scale`` or more.
 - Client to server, JSON: ``{"type": "brush", "x", "y", "r", "erase"}``, ``{"type": "preset", "name"}``,
   ``{"type": "reset"}``, ``{"type": "threshold", "tau"}`` with null for never, and
   ``{"type": "mode", "mode"}`` with ``auto``, ``ai`` or ``solver``.
@@ -335,6 +336,8 @@ class DemoSimulation:
             "members": len(self.ensemble.models),
             "weights": self.weights,
             "res": self.coarse_res,
+            "doubt_scale": self.doubt_full_scale,
+            "preset": self.preset,
         }
         encoded = json.dumps(header, allow_nan=False).encode()
         doubt_layer = torch.nan_to_num(doubt_map[0, 0] / self.doubt_full_scale, nan=1.0, posinf=1.0)
@@ -488,6 +491,7 @@ def build_simulation(args: argparse.Namespace, *, need_selection: bool = True) -
             handoff_frames=_FALLBACK_HANDOFF_FRAMES,
             tau=_RANDOM_TAU,
             weights="random",
+            doubt_full_scale=2.0 * _RANDOM_TAU,
             **common,
         )
 

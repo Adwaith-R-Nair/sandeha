@@ -1,0 +1,237 @@
+/* An instrument panel. Enamel faceplate, silkscreened ink, two viewing windows, and one pair of lamps. */
+
+@font-face { font-family: "B612"; src: url("fonts/b612-latin-400-normal.woff2") format("woff2"); font-weight: 400; font-display: swap; }
+@font-face { font-family: "B612"; src: url("fonts/b612-latin-700-normal.woff2") format("woff2"); font-weight: 700; font-display: swap; }
+
+:root {
+  --enamel: #c6cec4;
+  --enamel-raised: #d6dcd3;
+  --enamel-sunk: #b4bdb2;
+  --ink: #15211d;
+  --ink-soft: #3c4a44;
+  --glass: #0a1c2b;
+  --housing: #1d2b31;
+  --housing-text: #5e7078;
+  --ai: #7ad7ff;
+  --physics: #ffb000;
+  --panel-width: 284px;
+  --gap: 14px;
+  --window: min(calc((100vw - var(--panel-width) - 4 * var(--gap)) / 2), calc(100vh - 250px));
+}
+
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+
+html, body { margin: 0; height: 100%; }
+body {
+  background: var(--enamel);
+  color: var(--ink);
+  font: 400 13px/1.3 "B612", system-ui, sans-serif;
+  font-variant-numeric: tabular-nums;
+  padding: 10px var(--gap);
+  overflow-x: hidden;
+}
+
+/* The head: what this is, and who is in control. */
+
+.head { display: flex; gap: 24px; align-items: stretch; justify-content: space-between; height: 76px; }
+.title { min-width: 0; align-self: center; }
+h1 { font-size: 26px; line-height: 1; font-weight: 700; margin: 0 0 5px; letter-spacing: -0.01em; }
+.title p { margin: 0; font-size: 14px; }
+.title .warning { font-weight: 700; color: #7a2c00; }
+
+.annunciator { display: flex; flex: none; gap: 3px; padding: 3px; background: var(--ink); border-radius: 4px; }
+.lamp {
+  width: 196px;
+  background: var(--housing);
+  color: var(--housing-text);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border-radius: 2px;
+}
+.lamp .legend { font: 700 34px/1 "B612", sans-serif; letter-spacing: 0.02em; }
+.lamp .note { font-size: 12px; margin-top: 2px; visibility: hidden; }
+.lamp.lit { color: var(--ink); }
+.lamp.lit .note { visibility: visible; }
+#lamp-ai.lit { background: var(--ai); box-shadow: 0 0 22px 2px rgb(122 215 255 / 0.55); }
+#lamp-physics.lit { background: var(--physics); box-shadow: 0 0 22px 2px rgb(255 176 0 / 0.6); }
+
+/* The bench: two equal windows over the strip, and the panel down the side. */
+
+.bench {
+  margin-top: 8px;
+  display: grid;
+  grid-template-columns: var(--window) var(--window) minmax(var(--panel-width), 1fr);
+  grid-template-rows: auto auto;
+  gap: 8px var(--gap);
+  align-items: start;
+}
+.view { margin: 0; min-width: 0; }
+figcaption { display: flex; align-items: baseline; gap: 8px; height: 22px; font-size: 13px; }
+figcaption strong { font-size: 16px; }
+figcaption span { color: var(--ink-soft); }
+
+.scale { margin-left: auto; display: flex; align-items: center; gap: 6px; font-size: 12px; }
+.scale i { font-style: normal; }
+.scale b {
+  width: 96px;
+  height: 10px;
+  background: linear-gradient(90deg, #0a1c2b, #3b2a5e, #a53f62, #ee812f, #ffe28c);
+  outline: 1px solid var(--ink);
+}
+
+.window {
+  position: relative;
+  width: var(--window);
+  height: var(--window);
+  background: var(--glass);
+  outline: 3px solid var(--ink);
+  outline-offset: 0;
+  overflow: hidden;
+}
+/* The rim takes the colour of whichever lamp is lit, so that a hand-off can be seen from the smoke. */
+body[data-source="ai"] .window { outline-color: var(--ai); }
+body[data-source="solver"] .window { outline-color: var(--physics); }
+
+.window canvas { display: block; width: 100%; height: 100%; cursor: crosshair; touch-action: none; }
+.ring {
+  position: absolute;
+  left: 0;
+  top: 0;
+  border: 1.5px solid #fff;
+  border-radius: 50%;
+  pointer-events: none;
+  mix-blend-mode: difference;
+}
+
+.strip {
+  grid-column: 1 / 3;
+  position: relative;
+  display: grid;
+  grid-template-columns: 148px 1fr 26px;
+  gap: 8px;
+  height: 104px;
+}
+.strip-text { display: flex; flex-direction: column; gap: 4px; }
+.strip-text strong { font-size: 13px; }
+.key { display: flex; align-items: center; gap: 5px; font-size: 12px; }
+.key i { width: 14px; height: 4px; display: inline-block; outline: 1px solid var(--ink); }
+.key .k-physics { margin-left: 6px; background: var(--physics); }
+.key .k-ai { background: var(--ai); }
+#tau-text { font-weight: 700; line-height: 1.3; white-space: pre-line; }
+#trace { width: 100%; height: 104px; background: var(--glass); outline: 2px solid var(--ink); display: block; }
+
+/* The slider's thumb sits level with the threshold line on the trace. */
+.slider { position: relative; height: 104px; }
+#tau {
+  writing-mode: vertical-lr;
+  direction: rtl;
+  appearance: none;
+  -webkit-appearance: none;
+  width: 26px;
+  height: 104px;
+  margin: 0;
+  background: linear-gradient(var(--ink), var(--ink)) center / 2px 100% no-repeat;
+  cursor: ns-resize;
+}
+#tau::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 26px;
+  height: 14px;
+  box-sizing: border-box;
+  background: var(--enamel-raised);
+  border: 2px solid var(--ink);
+  border-radius: 2px;
+}
+#tau::-moz-range-thumb {
+  width: 26px;
+  height: 14px;
+  box-sizing: border-box;
+  background: var(--enamel-raised);
+  border: 2px solid var(--ink);
+  border-radius: 2px;
+}
+.slider-top, .slider-bottom { position: absolute; right: calc(100% + 11px); font-size: 11px; color: #e2eae2; pointer-events: none; }
+.slider-top { top: 1px; }
+.slider-bottom { bottom: 1px; }
+
+/* The panel. */
+
+.panel { grid-column: 3; grid-row: 1 / 3; align-self: stretch; display: flex; flex-direction: column; justify-content: space-between; gap: 8px; min-width: 0; }
+.readouts { display: grid; grid-template-columns: 1fr 1fr; gap: 3px; margin: 0; background: var(--ink); padding: 3px; border-radius: 4px; }
+.readouts div { background: var(--housing); color: #eaf2ee; padding: 5px 8px 6px; border-radius: 2px; }
+.readouts dt { font-size: 12px; color: #b5c2bd; }
+.readouts dd { margin: 0; font: 700 32px/1.1 "B612", sans-serif; }
+
+fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
+legend { padding: 0; font-weight: 700; font-size: 14px; margin-bottom: 3px; }
+
+.choice { display: flex; background: var(--enamel-sunk); padding: 2px; gap: 2px; border-radius: 3px; }
+.choice + .choice { margin-top: 4px; }
+.choice label { flex: 1 1 0; position: relative; display: block; min-width: 0; }
+.choice input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer; }
+.choice span { display: block; text-align: center; padding: 13px 2px; font-size: 14px; line-height: 1.2; border-radius: 2px; }
+.choice input:hover + span { background: var(--enamel-raised); }
+.choice input:checked + span { background: var(--ink); color: #f1f5f0; font-weight: 700; }
+.choice input:focus-visible + span,
+button:focus-visible,
+canvas:focus-visible,
+#tau:focus-visible { outline: 3px solid #0f5fd0; outline-offset: 1px; }
+
+.shapes { display: grid; grid-template-columns: 74px repeat(3, 1fr); gap: 2px; align-items: stretch; }
+.shapes + .shapes { margin-top: 3px; }
+.shapes .group { align-self: center; font-size: 12px; color: var(--ink-soft); }
+.unseen button { font-weight: 700; }
+
+button {
+  font: 400 14px/1.2 "B612", sans-serif;
+  color: var(--ink);
+  background: var(--enamel-raised);
+  border: 1px solid var(--ink-soft);
+  border-radius: 2px;
+  padding: 13px 1px;
+  cursor: pointer;
+  min-width: 0;
+}
+button:hover { background: #e6ebe3; }
+button[aria-pressed="true"] { background: var(--ink); color: #f1f5f0; }
+.restart { display: grid; grid-template-columns: 1fr 1fr; gap: 2px; }
+#reset { font-weight: 700; }
+.only-reader { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+
+.connection {
+  position: fixed;
+  left: 50%;
+  top: 40%;
+  transform: translateX(-50%);
+  padding: 10px 16px;
+  background: var(--ink);
+  color: #fff;
+  border-left: 6px solid var(--physics);
+  max-width: 60ch;
+}
+
+/* A phone or small tablet: the same panel, stacked, with room for a finger. */
+
+@media (max-width: 860px) {
+  :root { --window: calc((100vw - 3 * var(--gap)) / 2); }
+  .head { flex-direction: column; height: auto; gap: 8px; }
+  .annunciator { height: 66px; }
+  .lamp { width: auto; flex: 1; }
+  .bench { grid-template-columns: 1fr 1fr; }
+  .strip { grid-column: 1 / 3; }
+  .panel { grid-column: 1 / 3; grid-row: auto; }
+  .choice span, button { padding-top: 12px; padding-bottom: 12px; }
+}
+
+@media (max-width: 520px) {
+  :root { --window: calc(100vw - 2 * var(--gap)); }
+  .bench { grid-template-columns: 1fr; }
+  .strip, .panel { grid-column: 1; }
+  figcaption { height: auto; flex-wrap: wrap; }
+  .strip { grid-template-columns: 1fr 26px; height: auto; }
+  .strip-text { grid-column: 1 / 3; }
+}
+

@@ -134,6 +134,21 @@ def test_ws_streams_frames():
     assert doubt.max() > 0  # The stub members disagree everywhere.
 
 
+def test_header_gives_the_page_its_doubt_scale_and_preset():
+    sim = make_sim(tau=1e9)
+    sim.doubt_full_scale = 0.5
+    with TestClient(create_app(sim)) as client, client.websocket_connect("/ws") as ws:
+        header = decode(ws.receive_bytes())[0]
+    assert header["doubt_scale"] == 0.5 and header["preset"] == sim.preset
+
+
+def test_random_weights_doubt_scale_spans_twice_tau(monkeypatch):
+    monkeypatch.setattr(server, "_random_models", lambda count, device: [Member(0.0), Member(1.0)])
+    args = server.parse_args(["--random-weights", "--device", "cpu", "--data-root", "no-such-directory"])
+    sim = server.build_simulation(args)
+    assert sim.doubt_full_scale == 2.0 * sim.policy.tau
+
+
 def test_clients_get_the_latest_frame_and_older_ones_are_dropped():
     sim = make_sim()
     for _ in range(3):
