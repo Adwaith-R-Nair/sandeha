@@ -867,3 +867,13 @@ Built `src/sandeha/eval/{metrics,rollout,experiments}.py`, `scripts/run_experime
 - **Not run on real data:** `results/handoff_selection.json`, the `exp_*.json` files, their figures and `docs/RESULTS.md` don't exist yet. The plan's remaining steps are the 3-scene validation dry run, the selection, recording the code commit in `PREREGISTRATION.md`, then `--final` once.
 - **Evaluation time isn't measured,** including the oracle's search of up to 9 rollout sets per set or side, which the preregistration asks for. Read it from the log of the validation run, against the budget, before starting `--final`.
 - **The real-data path below `--final` hasn't run.** A test runs the plain path through a real manifest, normaliser, checkpoints and report on tiny data. `--final` differs only in opening test splits, which `test_experiments_use_val_unless_final` checks with a stand-in.
+
+## 2026-11-03: Phase 7, Task 12 code (demo page)
+
+Built `src/sandeha/demo/static/` and `tests/demo/test_ui.py`, added Playwright as a dev dependency, and gave the frame header `doubt_scale` and `preset`. Decision is B55. Tested in headless Chrome with software rendering, against a server with `--random-weights --device cpu`. Screenshots at 1280 by 720 and 390 wide were inspected in AI, physics and auto modes, with presets and drawing.
+
+### Open items
+
+- **The video and README GIF aren't recorded.** They need trained models, so that what they show is the real system. That step of Task 12 is still open.
+- **The page has only seen untrained models on the CPU, at about 4 frames per second.** Check it again with trained weights on the GPU, especially the doubt scale of 2τ against real doubt, and whether anything looks wrong at 15 frames per second or more.
+- **Only Chrome has run it.** The Firefox slider styles are written but haven't been looked at.
