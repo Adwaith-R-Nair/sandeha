@@ -1,0 +1,660 @@
+{
+ "label": "Published scientific simulation benchmark (The Well, turbulent_radiative_layer_2D), not measured data.",
+ "split": "test",
+ "trajectories": 9,
+ "evidence_figure": "evidence.doubt.within_time_spearman",
+ "aggregation": "p99",
+ "bad_threshold": 0.791084146499634,
+ "evidence": {
+  "note": "Only within_time_spearman counts as evidence. The other measures don't by themselves.",
+  "doubt": {
+   "within_time_spearman": {
+    "value": 0.8203333333333331,
+    "ci95": [
+     0.49435064011379803,
+     0.9100994410805773
+    ],
+    "undefined_times": 0,
+    "times": 50,
+    "resamples_with_no_figure": 0
+   },
+   "pooled_spearman": 0.3120936564295791,
+   "within_time_auroc": {
+    "value": null,
+    "excluded_times": 50,
+    "times_no_bad_or_all_bad": 19
+   },
+   "pooled_auroc": 0.7430970793802653,
+   "bad_frames": 111,
+   "frames": 450,
+   "non_finite_frames": 0,
+   "capped_frames": 0,
+   "mean_error": 0.58252022071845,
+   "calibration": [
+    {
+     "frames": 41,
+     "mean_error": 0.412113459008496,
+     "bad_share": 0.0
+    },
+    {
+     "frames": 51,
+     "mean_error": 0.3658632143747573,
+     "bad_share": 0.0
+    },
+    {
+     "frames": 55,
+     "mean_error": 0.36224528388543564,
+     "bad_share": 0.03636363636363636
+    },
+    {
+     "frames": 62,
+     "mean_error": 0.4798129256213865,
+     "bad_share": 0.1774193548387097
+    },
+    {
+     "frames": 34,
+     "mean_error": 0.5692469086498022,
+     "bad_share": 0.4117647058823529
+    },
+    {
+     "frames": 41,
+     "mean_error": 0.6279444924396712,
+     "bad_share": 0.4634146341463415
+    },
+    {
+     "frames": 52,
+     "mean_error": 0.6483777469883745,
+     "bad_share": 0.36538461538461536
+    },
+    {
+     "frames": 36,
+     "mean_error": 0.8852207666883866,
+     "bad_share": 0.3888888888888889
+    },
+    {
+     "frames": 39,
+     "mean_error": 1.1148592069362984,
+     "bad_share": 0.6153846153846154
+    },
+    {
+     "frames": 39,
+     "mean_error": 0.5831618710206106,
+     "bad_share": 0.20512820512820512
+    }
+   ],
+   "risk_coverage": {
+    "coverage": [
+     0.1,
+     0.2,
+     0.3,
+     0.4,
+     0.5,
+     0.6,
+     0.7,
+     0.8,
+     0.9,
+     1.0
+    ],
+    "pooled": {
+     "achieved": [
+      0.1,
+      0.2,
+      0.3,
+      0.4,
+      0.5,
+      0.6,
+      0.7,
+      0.8,
+      0.9,
+      1.0
+     ],
+     "mean_error": [
+      0.4214498768250147,
+      0.383763376954529,
+      0.3782629661537983,
+      0.38780749825139843,
+      0.41902976458271346,
+      0.4485647055423922,
+      0.47643674893511667,
+      0.5232383275715013,
+      0.5789190206354783,
+      0.58252022071845
+     ]
+    },
+    "within_time": {
+     "achieved": [
+      0.11111111111111102,
+      0.22222222222222204,
+      0.3333333333333335,
+      0.4444444444444441,
+      0.5555555555555561,
+      0.666666666666667,
+      0.7777777777777782,
+      0.8888888888888882,
+      1.0,
+      1.0
+     ],
+     "mean_error": [
+      0.3423217152804136,
+      0.35477131631225345,
+      0.34005738005042074,
+      0.34589525317773223,
+      0.38448836679756654,
+      0.4289673894271255,
+      0.4594080517228161,
+      0.5419664072711021,
+      0.58252022071845,
+      0.58252022071845
+     ]
+    }
+   }
+  },
+  "no_ensemble_divergence": {
+   "within_time_spearman": {
+    "value": 0.1863333333333333,
+    "ci95": [
+     -0.22148260073260073,
+     0.5010614035087719
+    ],
+    "undefined_times": 0,
+    "times": 50,
+    "resamples_with_no_figure": 0
+   },
+   "pooled_spearman": 0.608232205261919,
+   "within_time_auroc": {
+    "value": null,
+    "excluded_times": 50,
+    "times_no_bad_or_all_bad": 21
+   },
+   "pooled_auroc": 0.7251789501590669,
+   "bad_frames": 82,
+   "frames": 450,
+   "non_finite_frames": 0,
+   "capped_frames": 0,
+   "mean_error": 0.5445984822760026,
+   "calibration": [
+    {
+     "frames": 59,
+     "mean_error": 0.15957401345594455,
+     "bad_share": 0.0
+    },
+    {
+     "frames": 37,
+     "mean_error": 0.2797533487145965,
+     "bad_share": 0.0
+    },
+    {
+     "frames": 55,
+     "mean_error": 0.35428525805473327,
+     "bad_share": 0.0
+    },
+    {
+     "frames": 62,
+     "mean_error": 0.4869998122655576,
+     "bad_share": 0.11290322580645161
+    },
+    {
+     "frames": 43,
+     "mean_error": 0.7502984331790791,
+     "bad_share": 0.3953488372093023
+    },
+    {
+     "frames": 38,
+     "mean_error": 0.6617226177140286,
+     "bad_share": 0.23684210526315788
+    },
+    {
+     "frames": 29,
+     "mean_error": 0.713415432079085,
+     "bad_share": 0.3448275862068966
+    },
+    {
+     "frames": 25,
+     "mean_error": 1.0649417555332183,
+     "bad_share": 0.6
+    },
+    {
+     "frames": 41,
+     "mean_error": 0.7036775401452693,
+     "bad_share": 0.2926829268292683
+    },
+    {
+     "frames": 61,
+     "mean_error": 0.6893809198356066,
+     "bad_share": 0.19672131147540983
+    }
+   ],
+   "risk_coverage": {
+    "coverage": [
+     0.1,
+     0.2,
+     0.3,
+     0.4,
+     0.5,
+     0.6,
+     0.7,
+     0.8,
+     0.9,
+     1.0
+    ],
+    "pooled": {
+     "achieved": [
+      0.1,
+      0.2,
+      0.3,
+      0.4,
+      0.5,
+      0.6,
+      0.7,
+      0.8,
+      0.9,
+      1.0
+     ],
+     "mean_error": [
+      0.14675769946641393,
+      0.19973061569035053,
+      0.24988343773616684,
+      0.2870329945658644,
+      0.33788982396324474,
+      0.4153588212612602,
+      0.4524663814358295,
+      0.509630599980139,
+      0.5290956679225703,
+      0.5445984822760026
+     ]
+    },
+    "within_time": {
+     "achieved": [
+      0.11111111111111102,
+      0.22222222222222204,
+      0.3333333333333335,
+      0.4444444444444441,
+      0.5555555555555561,
+      0.666666666666667,
+      0.7777777777777782,
+      0.8888888888888882,
+      1.0,
+      1.0
+     ],
+     "mean_error": [
+      0.5803126064687967,
+      0.5435079377144575,
+      0.5419493723164002,
+      0.524812150541693,
+      0.5209703803807496,
+      0.5672560747340321,
+      0.5499824437392609,
+      0.5451856103073806,
+      0.5445984822760025,
+      0.5445984822760025
+     ]
+    }
+   }
+  }
+ },
+ "secondary": {
+  "note": "Only within_time_spearman counts as evidence. The other measures don't by themselves.",
+  "doubt": {
+   "within_time_spearman": {
+    "value": 0.46749999999999997,
+    "ci95": [
+     0.14182533905065817,
+     0.6432283619024625
+    ],
+    "undefined_times": 0,
+    "times": 80,
+    "resamples_with_no_figure": 0
+   },
+   "pooled_spearman": 0.250322049232348,
+   "within_time_auroc": {
+    "value": null,
+    "excluded_times": 80,
+    "times_no_bad_or_all_bad": 19
+   },
+   "pooled_auroc": 0.6336327219059666,
+   "bad_frames": 255,
+   "frames": 720,
+   "non_finite_frames": 0,
+   "capped_frames": 0,
+   "mean_error": 0.7500747757498175,
+   "calibration": [
+    {
+     "frames": 45,
+     "mean_error": 0.43905884590413835,
+     "bad_share": 0.022222222222222223
+    },
+    {
+     "frames": 58,
+     "mean_error": 0.4097358274819522,
+     "bad_share": 0.05172413793103448
+    },
+    {
+     "frames": 79,
+     "mean_error": 0.4718695475330836,
+     "bad_share": 0.12658227848101267
+    },
+    {
+     "frames": 100,
+     "mean_error": 0.7453490577638149,
+     "bad_share": 0.4
+    },
+    {
+     "frames": 105,
+     "mean_error": 0.9322868263082845,
+     "bad_share": 0.5619047619047619
+    },
+    {
+     "frames": 118,
+     "mean_error": 0.9531707537944539,
+     "bad_share": 0.5169491525423728
+    },
+    {
+     "frames": 80,
+     "mean_error": 0.7291805651504546,
+     "bad_share": 0.35
+    },
+    {
+     "frames": 52,
+     "mean_error": 0.903467680255954,
+     "bad_share": 0.40384615384615385
+    },
+    {
+     "frames": 44,
+     "mean_error": 1.0521947541697458,
+     "bad_share": 0.5454545454545454
+    },
+    {
+     "frames": 39,
+     "mean_error": 0.5831618710206106,
+     "bad_share": 0.20512820512820512
+    }
+   ],
+   "risk_coverage": {
+    "coverage": [
+     0.1,
+     0.2,
+     0.3,
+     0.4,
+     0.5,
+     0.6,
+     0.7,
+     0.8,
+     0.9,
+     1.0
+    ],
+    "pooled": {
+     "achieved": [
+      0.1,
+      0.2,
+      0.3,
+      0.4,
+      0.5,
+      0.6,
+      0.7,
+      0.8,
+      0.9,
+      1.0
+     ],
+     "mean_error": [
+      0.4358656537822551,
+      0.4321402402905126,
+      0.4593804658356088,
+      0.563085258912502,
+      0.6242112991607024,
+      0.6973218931385351,
+      0.7245273988486992,
+      0.724264629637926,
+      0.7403653106123301,
+      0.7500747757498175
+     ]
+    },
+    "within_time": {
+     "achieved": [
+      0.11111111111111091,
+      0.22222222222222182,
+      0.333333333333333,
+      0.44444444444444364,
+      0.5555555555555565,
+      0.666666666666666,
+      0.7777777777777783,
+      0.8888888888888873,
+      1.0,
+      1.0
+     ],
+     "mean_error": [
+      0.6006594851147383,
+      0.5963829396059737,
+      0.6019009447656573,
+      0.6355522474623285,
+      0.6424322673399001,
+      0.6651665941889708,
+      0.6721705542145564,
+      0.7242560599755962,
+      0.7500747757498174,
+      0.7500747757498174
+     ]
+    }
+   }
+  },
+  "no_ensemble_divergence": {
+   "within_time_spearman": {
+    "value": -0.20833333333333334,
+    "ci95": [
+     -0.46614418431809734,
+     0.058730453852021164
+    ],
+    "undefined_times": 0,
+    "times": 80,
+    "resamples_with_no_figure": 0
+   },
+   "pooled_spearman": 0.47556586078805446,
+   "within_time_auroc": {
+    "value": null,
+    "excluded_times": 80,
+    "times_no_bad_or_all_bad": 21
+   },
+   "pooled_auroc": 0.6303264871787628,
+   "bad_frames": 207,
+   "frames": 720,
+   "non_finite_frames": 0,
+   "capped_frames": 0,
+   "mean_error": 0.7106269032332219,
+   "calibration": [
+    {
+     "frames": 59,
+     "mean_error": 0.15957401345594455,
+     "bad_share": 0.0
+    },
+    {
+     "frames": 37,
+     "mean_error": 0.2797533487145965,
+     "bad_share": 0.0
+    },
+    {
+     "frames": 55,
+     "mean_error": 0.35428525805473327,
+     "bad_share": 0.0
+    },
+    {
+     "frames": 62,
+     "mean_error": 0.4869998122655576,
+     "bad_share": 0.11290322580645161
+    },
+    {
+     "frames": 43,
+     "mean_error": 0.7502984331790791,
+     "bad_share": 0.3953488372093023
+    },
+    {
+     "frames": 38,
+     "mean_error": 0.6617226177140286,
+     "bad_share": 0.23684210526315788
+    },
+    {
+     "frames": 30,
+     "mean_error": 0.7332152272264163,
+     "bad_share": 0.36666666666666664
+    },
+    {
+     "frames": 27,
+     "mean_error": 1.0794795056184132,
+     "bad_share": 0.6296296296296297
+    },
+    {
+     "frames": 56,
+     "mean_error": 0.8480864417340074,
+     "bad_share": 0.4642857142857143
+    },
+    {
+     "frames": 313,
+     "mean_error": 0.9142569194015223,
+     "bad_share": 0.38338658146964855
+    }
+   ],
+   "risk_coverage": {
+    "coverage": [
+     0.1,
+     0.2,
+     0.3,
+     0.4,
+     0.5,
+     0.6,
+     0.7,
+     0.8,
+     0.9,
+     1.0
+    ],
+    "pooled": {
+     "achieved": [
+      0.1,
+      0.2,
+      0.3,
+      0.4,
+      0.5,
+      0.6,
+      0.7,
+      0.8,
+      0.9,
+      1.0
+     ],
+     "mean_error": [
+      0.17657297482300136,
+      0.2567231117282063,
+      0.3295219078901465,
+      0.4282873183256015,
+      0.516544108123829,
+      0.5766647134786816,
+      0.6604504736864732,
+      0.724313426471781,
+      0.7317345593711017,
+      0.7106269032332219
+     ]
+    },
+    "within_time": {
+     "achieved": [
+      0.11111111111111091,
+      0.22222222222222182,
+      0.333333333333333,
+      0.44444444444444364,
+      0.5555555555555565,
+      0.666666666666666,
+      0.7777777777777783,
+      0.8888888888888873,
+      1.0,
+      1.0
+     ],
+     "mean_error": [
+      0.890334544563666,
+      0.9711025204043835,
+      0.9520401065703481,
+      0.9055854936712422,
+      0.84535648827441,
+      0.825425546670643,
+      0.7737385353539141,
+      0.734345472016139,
+      0.7106269032332218,
+      0.7106269032332218
+     ]
+    }
+   }
+  }
+ },
+ "rise_on_unfamiliar": "not applicable: this dataset has one test set, with no familiar and unfamiliar sets to compare",
+ "provenance": {
+  "git_commit": "2732592ff8e41bcf52ec9ff4bfbc30df94eb68f0",
+  "git_dirty": false,
+  "config": {
+   "data_root": "data/well",
+   "device": "auto",
+   "expected": {
+    "grid": [
+     128,
+     384
+    ],
+    "steps": 101,
+    "trajectories": {
+     "train": 72,
+     "valid": 9,
+     "test": 9
+    }
+   },
+   "seeds": [
+    0,
+    1,
+    2
+   ],
+   "seed": 0,
+   "model": {
+    "arch": "unet",
+    "base_width": 32,
+    "levels": 4,
+    "inputs": 4,
+    "outputs": 4
+   },
+   "batch_size": 8,
+   "num_workers": 2,
+   "lr": 0.0003,
+   "weight_decay": 0.01,
+   "mixed_precision": true,
+   "warmup_fraction": 0.1,
+   "pushforward_prob": 0.5,
+   "pushforward_max": 3,
+   "max_minutes": 40,
+   "timing_steps": 50,
+   "eval_every": 500,
+   "checkpoint_every": 500,
+   "log_every": 50,
+   "rollout_start": 20,
+   "rollout_steps": 20,
+   "eval_batch_size": 4,
+   "evidence": {
+    "start": 20,
+    "first": 21,
+    "last": 70,
+    "secondary_last": 100,
+    "bad_percentile": 80,
+    "min_each_class": 5,
+    "bootstrap": 2000,
+    "seed": 0
+   }
+  },
+  "checkpoints_sha256": {
+   "member_0": "c7eed3c54c7abccbde5501247e67c296a7ba54794f209a27686f9b9529950846",
+   "member_1": "e5e63d7b20a61e00a0545d378b7e4415602cae05116828e4311769c0893ea591",
+   "member_2": "184c775ec16a2956333dff44239f7e413f92b069da0564bd1ef0e5c768537e90"
+  },
+  "data_sha256": {
+   "test/turbulent_radiative_layer_tcool_0.03.hdf5": "7cfc3b5be027792100b20cc4c1ab2f2835f983b00f6f86c3833bb52484c5a68e",
+   "test/turbulent_radiative_layer_tcool_0.06.hdf5": "7274a1ee2daf404e392cafac0a7de08668a834d78c5af48ed1c3eb844822be99",
+   "test/turbulent_radiative_layer_tcool_0.10.hdf5": "4a8d39a19bea829b01de8c25a78fa7d089de82f14c676fca3a94365e6e994ebe",
+   "test/turbulent_radiative_layer_tcool_0.18.hdf5": "30a0218124429556c889dfbb94b3f20acee1946d35d74c7ed5179b717f57dc21",
+   "test/turbulent_radiative_layer_tcool_0.32.hdf5": "06cbd36c1dbea84e70906a363d20143b228765ee37850ec65351e247cf7df747",
+   "test/turbulent_radiative_layer_tcool_0.56.hdf5": "d69d6f41c950d69e2a21688c65e303fd5cd415c37ec686df055db7da73a838fe",
+   "test/turbulent_radiative_layer_tcool_1.00.hdf5": "97f5d10132c6f4b100d1c77d94e91fa2acdc4954cc359733087b9ae5fc983838",
+   "test/turbulent_radiative_layer_tcool_1.78.hdf5": "f53524c481e095be20d607dd3f9a2738dd1a2dd8c0a675c0794f000822c79c2b",
+   "test/turbulent_radiative_layer_tcool_3.16.hdf5": "02a7d46a9ac1f36a479d32396a07818e26832015d083dee63845d64b92b39cf3",
+   "normalizer.json": "18b53a7880d1e056bb916efe859628d822136b2c864324d1c5960b4d38a7824a"
+  },
+  "selection_sha256": "14d9587eb6610e8342219fa25881614ad9f7b725e8301f3d75e50aa182043c6e"
+ }
+}
