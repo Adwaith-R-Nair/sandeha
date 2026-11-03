@@ -960,3 +960,7 @@ Earlier entries in this log that mention pending sections or an unpublished rele
 - **Demo recording:** `docs/assets/` has `sandeha-demo.mp4` and `sandeha-demo.gif`, including physics-only mode, and the stills `doubt-star.png` and `physics-mode.png`. By-doubt and physics-only modes showed about 7 and 4 frames per second on screen while recording. That includes recording overhead, and isn't a benchmark figure. The benchmark is `results/demo_bench.json`: 61.3 frames per second in AI mode with 5 members.
 - **Report:** `docs/REPORT.md` has no placeholder left, so it is no longer called a draft.
 - **Not rerun:** no experiment ran for this entry, and no `results/exp_*.json` changed.
+
+## 2026-11-04: Close of the build
+
+`tests/data/test_travel.py` and `tests/demo` ran once more at the final docs commit: 84 passed. This closes the gap noted for the current version of the travel tests. Code and experiments are frozen.

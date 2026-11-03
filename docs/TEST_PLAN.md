@@ -157,4 +157,4 @@ The server tests use small stand-in models on the CPU. The page tests start the 
 
 ## Before submission
 
-Planned, by hand: from a clean clone in a temporary directory, install, download the released weights, run the tests and start the demo. This has no test of its own.
+- **Clean-clone check:** done on a fresh clone at `9c4bac7`: install, release weights, the trained demo served its page, and 573 tests passed with 1 skipped, without `tests/data/test_travel.py`. That file was run separately with `tests/demo` in the main checkout at the final docs commit: 84 passed.
