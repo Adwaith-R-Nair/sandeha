@@ -1,0 +1,136 @@
+{
+ "label": "Published scientific simulation benchmark (The Well, turbulent_radiative_layer_2D), not measured data.",
+ "split": "valid",
+ "aggregation": "p99",
+ "aggregation_figures": {
+  "mean": {
+   "value": 0.714,
+   "ci95": [
+    0.3984976503759399,
+    0.8221162679425836
+   ],
+   "undefined_times": 0,
+   "times": 50,
+   "resamples_with_no_figure": 0
+  },
+  "p95": {
+   "value": 0.7613333333333333,
+   "ci95": [
+    0.501,
+    0.8517495412844034
+   ],
+   "undefined_times": 0,
+   "times": 50,
+   "resamples_with_no_figure": 0
+  },
+  "p99": {
+   "value": 0.8326666666666667,
+   "ci95": [
+    0.5585116427432217,
+    0.9115911978221415
+   ],
+   "undefined_times": 0,
+   "times": 50,
+   "resamples_with_no_figure": 0
+  }
+ },
+ "bad_threshold": 0.791084146499634,
+ "doubt_deciles": [
+  0.03552843332290649,
+  0.037334942072629926,
+  0.039104174077510837,
+  0.04113709479570389,
+  0.046228526160120964,
+  0.05939852222800254,
+  0.07559578940272328,
+  0.09206589162349703,
+  0.1109698310494423
+ ],
+ "divergence_deciles": [
+  0.0005318907671608031,
+  0.0006380228907801211,
+  0.0007875621609855443,
+  0.0009220469044521451,
+  0.0009966068901121616,
+  0.0010461900383234024,
+  0.0011102975928224622,
+  0.0011525377864018082,
+  0.0012453345581889155
+ ],
+ "provenance": {
+  "git_commit": "67f5dceddcf6371efd3b60f111ea1a57ab0e09a0",
+  "git_dirty": false,
+  "config": {
+   "data_root": "data/well",
+   "device": "auto",
+   "expected": {
+    "grid": [
+     128,
+     384
+    ],
+    "steps": 101,
+    "trajectories": {
+     "train": 72,
+     "valid": 9,
+     "test": 9
+    }
+   },
+   "seeds": [
+    0,
+    1,
+    2
+   ],
+   "seed": 0,
+   "model": {
+    "arch": "unet",
+    "base_width": 32,
+    "levels": 4,
+    "inputs": 4,
+    "outputs": 4
+   },
+   "batch_size": 8,
+   "num_workers": 2,
+   "lr": 0.0003,
+   "weight_decay": 0.01,
+   "mixed_precision": true,
+   "warmup_fraction": 0.1,
+   "pushforward_prob": 0.5,
+   "pushforward_max": 3,
+   "max_minutes": 40,
+   "timing_steps": 50,
+   "eval_every": 500,
+   "checkpoint_every": 500,
+   "log_every": 50,
+   "rollout_start": 20,
+   "rollout_steps": 20,
+   "eval_batch_size": 4,
+   "evidence": {
+    "start": 20,
+    "first": 21,
+    "last": 70,
+    "secondary_last": 100,
+    "bad_percentile": 80,
+    "min_each_class": 5,
+    "bootstrap": 2000,
+    "seed": 0
+   }
+  },
+  "checkpoints_sha256": {
+   "member_0": "c7eed3c54c7abccbde5501247e67c296a7ba54794f209a27686f9b9529950846",
+   "member_1": "e5e63d7b20a61e00a0545d378b7e4415602cae05116828e4311769c0893ea591",
+   "member_2": "184c775ec16a2956333dff44239f7e413f92b069da0564bd1ef0e5c768537e90"
+  },
+  "data_sha256": {
+   "valid/turbulent_radiative_layer_tcool_0.03.hdf5": "0d2739f1225318a36bd3d32032eb52ede23c236ac02fae3b89e26832b55001b9",
+   "valid/turbulent_radiative_layer_tcool_0.06.hdf5": "0c7a77915c3618ba1cef9fefd2277c04a083c3b7ce04e171263dbe2f3f59b00a",
+   "valid/turbulent_radiative_layer_tcool_0.10.hdf5": "a8b834999eaa28d6f4f16d90f51ee4b56eee755236300426ce1ba0f48f869474",
+   "valid/turbulent_radiative_layer_tcool_0.18.hdf5": "f329812e119203201fd395d80899e904b05e979ff00ddee378501c580911b534",
+   "valid/turbulent_radiative_layer_tcool_0.32.hdf5": "b3fc6251549ffe11ea816defa33160aa6e43ef25dbe9c74d3effd1675d8b60c1",
+   "valid/turbulent_radiative_layer_tcool_0.56.hdf5": "6b326925ec8ac5043d29449e56262d056cbed1b5ca152c24322564aa4acefa8f",
+   "valid/turbulent_radiative_layer_tcool_1.00.hdf5": "211f07412eae457e16e993444d33a0226967161220ad7e717ce70425230fdec1",
+   "valid/turbulent_radiative_layer_tcool_1.78.hdf5": "523a2c3682221c7cda6207462880c39dd1fa74a3792ec3111ffac66a71ee3f8c",
+   "valid/turbulent_radiative_layer_tcool_3.16.hdf5": "04c2d10f88779fba941dfe9d6ec0b942701ed7b7aa83533c6da1d9de8d5fc1e0",
+   "normalizer.json": "18b53a7880d1e056bb916efe859628d822136b2c864324d1c5960b4d38a7824a"
+  }
+ }
+}
