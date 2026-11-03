@@ -823,7 +823,7 @@ Built `src/sandeha/well/`, `scripts/train_well.py`, `scripts/eval_well.py` and `
 
 Download, which leaves out the notebook, so nothing in the download can be run:
 
-    uv run hf download polymathic-ai/turbulent_radiative_layer_2D --repo-type dataset --local-dir data/well --include "data/*" "stats.yaml"
+    uv run hf download polymathic-ai/turbulent_radiative_layer_2D --repo-type dataset --local-dir data/well --include "data/*"
 
 ### Open items
 
@@ -831,3 +831,7 @@ Download, which leaves out the notebook, so nothing in the download can be run:
 - **Batch size 8 and mixed precision haven't run on the GPU.** The first steps of a run will show whether 8 fits in 6 GB.
 - **The test split has 9 trajectories, one per cooling time.** Each time's Spearman is across 9 values, and the interval will be wide. Within-time AUROC needs 5 bad and 5 good frames at a time, which 9 can't give, so it will report every time as excluded, and pooled AUROC is the only AUROC figure. Doubt and error may also both vary with the cooling time, which isn't an input.
 - **Task 9's `eval/metrics.py` will repeat `spearman` and `auroc` from `well/doubt.py`.** Use one copy once both exist.
+
+## 2026-11-03: Fix the public track's download command
+
+The documented command passed `"stats.yaml"` after `--include`. huggingface-hub 2.4.0 takes one value per flag, so it read that as a filename, ignored `--include`, and fetched no HDF5 files. The command now has `--include "data/*"` alone, since the code never reads `stats.yaml`. `tests/well/test_well_download.py` runs the documented command through the real CLI with the hub calls mocked. It failed before the fix and passes after. No real download has been run.
