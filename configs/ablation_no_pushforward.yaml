@@ -1,0 +1,4 @@
+# Laid over the winning architecture's training config (docs/DESIGN.md, section 6.4).
+seed: 0
+max_minutes: 25
+pushforward_prob: 0.0

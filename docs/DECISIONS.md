@@ -353,3 +353,8 @@ Each major decision, the alternatives and the reason. Status is **Default** for 
 - **Alternatives:** a total fixed from the separate measurement, which goes stale if the machine's speed changes.
 - **Reason:** the schedule should finish on time on the day. The timing steps run before the warm-up is known, so they have no pushforward.
 
+### B49: How Task 6's runs are recorded and checked (2026-11-03)
+
+- **Decision:** the check runs on each member's `best.pt`, over 100 validation steps from frame 20. "Finite" means no frame blown up in the preregistered sense: not finite, or above 10. "An improvement over persistence" means a strictly lower capped mean error on the same frames. Results go to `results/ensemble.json`, updated after each member, with each verdict kept beside its checkpoint. A member failing twice is recorded and the job exits with 1, with no third try. A selection tie goes to the U-Net, the expected backbone. The ablations are overlays on the winner's config, trained with `scripts/train_ensemble.py --ablations`.
+- **Alternatives:** counting only NaN and infinity as not finite, which would pass a rollout that reaches huge values. A separate ablation script, which repeats the same skip and resume code.
+- **Reason:** the plan is silent on these. The shared code is in `src/sandeha/train/campaign.py`, which the layout doesn't list.

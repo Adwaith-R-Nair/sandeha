@@ -1,0 +1,6 @@
+# Ensemble training (docs/PLAN.md, Task 6). The architecture comes from results/arch_selection.json.
+seeds: [0, 1, 2, 3, 4]
+max_minutes: 48
+retry_seed_offset: 100 # A member that fails its check is retrained once, with this added to its seed.
+check_start: 20 # The check's rollouts start where the preregistered rollouts do.
+check_steps: 100

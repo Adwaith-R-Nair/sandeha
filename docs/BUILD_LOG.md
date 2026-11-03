@@ -804,3 +804,11 @@ Written while the dataset generation ran on the GPU, so everything was tested on
 - **`lambda_div` not judged.** The same run gives the divergence floor on real targets.
 - **The data run started from commit fb27f48.** It refuses a resume from any other commit. If it stops before finishing, check that commit out to resume it, since this work comes after it.
 
+## 2026-11-03: Phase 4, Task 6 code (architecture choice, ensemble, ablations)
+
+Built `scripts/select_arch.py`, `scripts/train_ensemble.py`, `src/sandeha/train/campaign.py`, `configs/ensemble.yaml` and both `configs/ablation_*.yaml`. `rollout_error` now sits on `rollout_frame_errors`, which keeps uncapped values for the check. Decision is B49. Nothing has been trained for real: `results/arch_selection.json` doesn't exist yet, and `--dry-run` writes only to its own directory.
+
+### Open items
+
+- **Run the selection and the ensemble**, then record the winner in `docs/DECISIONS.md` and commit `results/arch_selection.json`.
+- **The ablations train for 25 minutes and the ensemble's members for 48.** The plan names no 25-minute baseline, so Task 9 must say so when comparing them.

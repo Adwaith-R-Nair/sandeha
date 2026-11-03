@@ -104,7 +104,47 @@ def training_step(
         return step_loss(pred.float(), target, masks[:, pushed], lambda_div, _velocity_scale(normalizer))
 
 
+def capped_mean(errors: Tensor) -> float:
+    errors = torch.nan_to_num(errors, nan=ERROR_CAP, posinf=ERROR_CAP).clamp(max=ERROR_CAP)
+    return errors.double().mean().item()
+
+
 @torch.no_grad()
+def rollout_frame_errors(
+    model: nn.Module,
+    store,
+    normalizer: Normalizer,
+    start: int,
+    steps: int,
+    batch_size: int,
+    device: str = "cpu",
+    amp: bool = False,
+) -> Tensor:
+    """The RMS error ``(scenes, steps)`` in normalised field units on fluid cells, uncapped."""
+    if start + steps >= store.n_frames:
+        raise ValueError(f"a rollout of {steps} from frame {start} doesn't fit in {store.n_frames} frames")
+    errors = []
+    for first in range(0, store.n_scenes, batch_size):
+        scenes = range(first, min(first + batch_size, store.n_scenes))
+        fields = np.array(store.fields[scenes.start : scenes.stop, start : start + steps + 1], dtype=np.float32)
+        fields = torch.from_numpy(fields).to(device)
+        inflow = torch.from_numpy(np.stack([store.inflow(i) for i in scenes]))[:, None].float().to(device)
+        buoyancy = torch.tensor([store.buoyancy(i) for i in scenes], dtype=torch.float32, device=device)
+        state = fields[:, 0]
+        scene_errors = []
+        for k in range(steps):
+            solid = np.stack([store.obstacle(i, start + k) for i in scenes])
+            solid = torch.from_numpy(solid)[:, None].to(device)
+            x = normalizer.make_input(state, solid.float(), inflow, buoyancy)
+            with amp_context(device, amp):
+                state = apply_step(model, x, normalizer)
+            squares = (normalizer.encode(state) - normalizer.encode(fields[:, k + 1])).square()
+            fluid = ~solid
+            scene_errors.append(((squares * fluid).sum(dim=(1, 2, 3)) / (3 * fluid.sum(dim=(1, 2, 3)))).sqrt().cpu())
+        errors.append(torch.stack(scene_errors, dim=1))
+    return torch.cat(errors)
+
+
 def rollout_error(
     model: nn.Module,
     store,
@@ -115,33 +155,13 @@ def rollout_error(
     device: str = "cpu",
     amp: bool = False,
 ) -> float:
-    """Mean over scenes and frames of the RMS error in normalised field units, on fluid cells.
+    """Mean over scenes and frames of the rollout error.
 
     A frame that blows up counts as ``ERROR_CAP`` and stays in the mean, so that a blown-up model
     can't be chosen as best.
     """
-    if start + steps >= store.n_frames:
-        raise ValueError(f"a rollout of {steps} from frame {start} doesn't fit in {store.n_frames} frames")
-    total = 0.0
-    for first in range(0, store.n_scenes, batch_size):
-        scenes = range(first, min(first + batch_size, store.n_scenes))
-        fields = np.array(store.fields[scenes.start : scenes.stop, start : start + steps + 1], dtype=np.float32)
-        fields = torch.from_numpy(fields).to(device)
-        inflow = torch.from_numpy(np.stack([store.inflow(i) for i in scenes]))[:, None].float().to(device)
-        buoyancy = torch.tensor([store.buoyancy(i) for i in scenes], dtype=torch.float32, device=device)
-        state = fields[:, 0]
-        for k in range(steps):
-            solid = np.stack([store.obstacle(i, start + k) for i in scenes])
-            solid = torch.from_numpy(solid)[:, None].to(device)
-            x = normalizer.make_input(state, solid.float(), inflow, buoyancy)
-            with amp_context(device, amp):
-                state = apply_step(model, x, normalizer)
-            squares = (normalizer.encode(state) - normalizer.encode(fields[:, k + 1])).square()
-            fluid = ~solid
-            errors = ((squares * fluid).sum(dim=(1, 2, 3)) / (3 * fluid.sum(dim=(1, 2, 3)))).sqrt()
-            errors = torch.nan_to_num(errors, nan=ERROR_CAP, posinf=ERROR_CAP).clamp(max=ERROR_CAP)
-            total += errors.sum().item()
-    return total / (store.n_scenes * steps)
+    errors = rollout_frame_errors(model, store, normalizer, start, steps, batch_size, device, amp)
+    return capped_mean(errors)
 
 
 def budget_steps(
