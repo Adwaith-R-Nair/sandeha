@@ -1,0 +1,25 @@
+{
+ "target_fps": 15.0,
+ "target_met": true,
+ "chosen_members": 5,
+ "rungs": [
+  {
+   "members": 5,
+   "seconds": 60.01173622701026,
+   "frames": 3676,
+   "fps": 61.25468501851968,
+   "solver_frames": 0,
+   "checkpoint_sha256": [
+    "3ef91bb4d83e0adf7f5f5f022c1972711d74e06eedbf9824773c52a5d26d4fba",
+    "d9a1dfd8a28585e95352aacb6cdf6292e7455d1049abc6cc99ca0d9ebc2d2f57",
+    "4db331b8e554fdf081d826d24e1c26c36d981e1ad796c213d9870ba2012ad35d",
+    "0abb677b2c47279c2bb60f61f042471c083a46fe5ac69af4dd66b6362b8e53c9",
+    "1b06bd4afc1eccde0c6401147e23095e1bd1bf500de122108330784739458e68"
+   ]
+  }
+ ],
+ "weights": "trained",
+ "device": "NVIDIA GeForce RTX 3060 Laptop GPU",
+ "git_commit": "30c01e2d6f060ded669c44d91b8a8ff88ef761f7",
+ "git_dirty": false
+}
