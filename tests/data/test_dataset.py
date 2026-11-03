@@ -86,6 +86,29 @@ def test_normalizer_uses_train_only(tiny_root, normalizer):
     assert not np.allclose(normalizer.field_std, other_std, rtol=1e-3)
 
 
+def test_normalizer_applies_a_late_obstacle_on_the_planned_frames(late_root):
+    """Frame scales use the mask on the way in, and change scales the mask in the input.
+
+    Tiny scenes in ``tiny_root`` end before any late obstacle, so only this root tells them apart.
+    """
+    train = open_split(late_root, "train")
+    assert all(train.scene(i).late_frame is not None for i in range(train.n_scenes))
+    mean, std, delta = expected_stats(train)
+    fitted = Normalizer.load(late_root / "normalizer.json")
+    assert np.allclose(fitted.field_mean, mean, rtol=1e-6)
+    assert np.allclose(fitted.field_std, std, rtol=1e-6)
+    assert np.allclose(fitted.delta_std, delta, rtol=1e-6)
+
+
+def test_inflow_scale_is_the_peak_of_train(tiny_root, normalizer):
+    peaks = lambda store: [float(store.inflow(i).max()) for i in range(store.n_scenes)]
+    train = peaks(open_split(tiny_root, "train"))
+    assert normalizer.inflow_scale == pytest.approx(max(train))
+    # Another split's peak, or one scene's, is different, so the match above says something.
+    assert max(peaks(open_split(tiny_root, "val"))) != pytest.approx(max(train))
+    assert min(train) != pytest.approx(max(train))
+
+
 @pytest.mark.parametrize("split", ["val", "test_a", "test_b", "test_c"])
 def test_normalizer_refuses_to_fit_on_any_other_split(tiny_root, split):
     store = open_split(tiny_root, split, final_eval=True)
