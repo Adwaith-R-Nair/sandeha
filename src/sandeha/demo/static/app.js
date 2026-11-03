@@ -127,8 +127,7 @@ function show(header) {
   $("fps").textContent = header.fps.toFixed(1);
   $("share").textContent = `${Math.round(header.solver_share * 100)}%`;
   $("weights").hidden = header.weights !== "random";
-  const fewer = header.members < 5 ? ", fewer than the 5 measured" : "";
-  $("members").textContent = `Where ${header.members} models disagree${fewer}`;
+  $("members").textContent = header.members < 5 ? `Where ${header.members} of 5 models disagree` : "Where 5 models disagree";
   $("scale-top").textContent = digits(header.doubt_scale);
   $("summary").textContent =
     `${header.members} neural models run this smoke. When they disagree too much, the physics solver takes over.`;
