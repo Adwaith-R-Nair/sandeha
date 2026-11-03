@@ -1,6 +1,6 @@
 # Sandeha: Preregistration
 
-**Fixed on:** 2026-11-03, before the dataset was generated and before any model existed. Git history is the record of this. The file's commits come before the data manifest and before all model code. The rules were tightened once after review on the same terms, as the record at the end states.
+**Fixed on:** 2026-11-03, before the dataset was generated and before any model existed. Git history is the record of this. The file's commits come before the data manifest and before all model code. The rules were tightened twice after review on the same terms, as the record at the end states.
 
 **Changes:** none of the rules below change after a model has been run on any split. If one has to, the change gets its own dated entry in the section at the end, with the reason, and the original figure is reported beside the changed one. `docs/DESIGN.md` sections 6.2, 6.3 and 6.5 are the source for these rules. Where this file is more exact, it decides.
 
@@ -111,30 +111,47 @@ Both baselines use the frozen `handoff_frames`, and their schedules are worked o
 
 Sweep curves on test sets are descriptive and choose nothing. All figures include the cost of every ensemble member.
 
+## Oracle bound
+
+The oracle shows what a hand-off could gain from knowing the true error at the current frame. It isn't a system anyone could run, so it reads a test set's reference by design. This is the one exception to choosing thresholds on train and validation only, and nothing else is chosen from it.
+
+- **Trigger.** It hands off if the per-frame error of the ensemble's output for a frame, against the reference at that same frame, is above its `tau`. It reads no later frame. The hand-off rules above then apply as for any other policy: the output is thrown away, the solver starts from the frame before, and a failing solver ends hand-offs in that rollout.
+- **Non-finite output.** It counts as an error of 10 and triggers at any `tau`, as a forced hand-off. These are counted, and count towards the solver share.
+- **Settings.** It uses the frozen `handoff_frames`, and its budget is the same as the baselines': the solver share the frozen `tau` actually used on that set, and per side on `test_c`. A budget of 0 means it isn't run, and this is stated.
+- **Its `tau`, per set and per side.** The first candidate is the `(100 - budget)`th percentile, with the budget in percentage points and linear interpolation, of per-frame errors for frames 21 to 70 of that set's evidence rollouts. If its share isn't within 1 percentage point of the budget, up to 8 further candidates follow by bisection on `[0, 10]`: a share above the budget raises the lower end to that `tau`, and a share below it lowers the upper end. The search stops at the first share within 1 point.
+- **What is kept.** The first candidate within 1 point or, failing that, the candidate with the share nearest the budget, with ties going to the lower share and then the lower `tau`. Each candidate's `tau` and share are reported. A kept share more than 1 point away is reported as unmatched, and no further search is made.
+- **Reading it.** The set score and the paired difference from doubt-based hand-off, with a 95% bootstrap interval, are reported beside the baselines and are descriptive. They don't enter "beats" above. The oracle judges one frame at a time, so a better schedule could exist, and doubt-based hand-off scoring lower than the oracle would be reported as it stands, not explained away.
+
+Each search runs up to 9 rollout sets per set or side. No model exists, so that time isn't measured, and Task 9 must measure it against the evaluation budget.
+
 ## Test-set policy
 
 - Tuning, selection, thresholds and every design choice use train and validation only.
-- `open_split` refuses a test split without `final_eval=True`, and checks each file against the checksums in `data/manifest.json`. A copy of the manifest is committed to git.
+- `open_split` refuses a test split without `final_eval=True`, and checks each file against the checksums in `data/manifest.json`. A copy of the manifest is committed to git as `results/data_manifest.json`, and `data/manifest.json` must match it. `Normalizer.load` checks `data/normalizer.json` against its checksum in the manifest.
 - `--final` is run once, after all code is committed and that commit's hash is added to this file. Any later bug fix is logged in `docs/BUILD_LOG.md` with what changed and the numbers before and after, and the first numbers stay on record.
 - **Exception, before any model exists:** the data spot-check after generation opens test splits to render a sample scene from each and to confirm stats, NaN count and manifest. It is an integrity check on the data. Nothing about the data, the ranges or the models is tuned from it. Should it find a defect, the fix and regeneration are logged, and the new data's manifest is committed.
 
 ## Travel in the spot-check
 
-A step's largest travel can pass the thinnest wall, 10.24 cells at 256×256, when a late obstacle lands in a fast flow, and semi-Lagrangian advection could then carry smoke across a wall. `stats.scenes_over_thinnest_wall` in the manifest names any such scene, per split. The spot-check states the largest travel in each split and its margin to the wall, then applies this rule:
+A step's largest travel can pass the thinnest wall, 10.24 cells at 256×256, when a late obstacle lands in a fast flow, and semi-Lagrangian advection could then carry smoke across a wall. Travel is a distance, as the wall's thickness is: in each cell, the faster of its two `u` faces and of its two `v` faces, combined as `sqrt(u² + v²)`, times `dt` and the grid size. This is an upper bound on the speed in that cell. `stats.scenes_over_thinnest_wall` in the manifest names any scene whose largest travel is above the wall, per split. The spot-check runs `uv run python scripts/check_travel.py --data-root data`, which reads only the manifest, reruns scenes from their seeds, and writes `results/travel_rule.json`. It states the largest travel in each split and its margin to the wall, and applies this rule:
 
 1. **No scene named:** this item passes.
-2. **Any scene named:** the data isn't accepted until each one has been compared. Restart the scene from the frame in `stats.travel_frame_by_scene`, as `scripts/check_travel.py` does, and continue for 5 frames at `dt=0.01` and `dt=0.005` from one shared state. Its figure is the largest root mean square density difference over fluid cells, relative to root mean square density.
-3. **Controls:** the same figure for the 3 scenes in that split with the lowest largest travel, each from its own frame.
-4. **Pass or fail:** a named scene passes if its figure is at most twice the largest control's. It stays in the set, and its figure and a rendering of the frames around the spike are logged.
+2. **Any scene named:** the data isn't accepted until each one has been compared. Restart the scene alone from the frame in `stats.travel_frame_by_scene`, and continue for 5 frames at `dt=0.01` and `dt=0.005` from one shared state. Its figure is the largest root mean square density difference over fluid cells, relative to root mean square density. A frame less than 5 frames from the scene's end moves back, so that the comparison stays inside the scene.
+3. **Controls:** the same figure for the 3 scenes in that split with the lowest largest travel that aren't named, each from its own frame, whether or not they have a late obstacle.
+4. **Pass or fail:** a named scene passes if its figure is at most twice the largest control's. It stays in the set, and its figure and a rendering of the frames around the spike are logged. A split with no control doesn't pass, nor does one with a figure that isn't a number.
 5. **On a failure:** this is a defect. Generation is redone for all splits at `dt=0.005`, with 8 solver steps per frame, and is logged under the exception above. No scene is dropped or redrawn over its travel.
 
-Twice is the build's choice, set before any scene above the wall has been seen. A step-size difference over the whole field can miss a small local leak, so a pass means there's no large effect, not that there's no leak.
+Twice is the build's choice, set before any scene above the wall has been seen. It was judged against controls that all had late obstacles (`results/travel_check.json`), whose figures ran from 0.034 to 0.070, while these controls come from every scene in a split, and in `test_b` and `test_c` none have one. So the factor hasn't yet been judged against its own population. `scripts/check_travel.py --control-sample` measures it, at a seed outside the dataset, and writes `results/travel_controls.json`. Its figures are logged before generation. Should they change the factor, that change gets its own entry in the record below, also before generation. A step-size difference over the whole field can miss a small local leak, so a pass means there's no large effect, not that there's no leak.
 
 ## Reporting `test_c`
 
 Every `test_c` figure is given for the low side, the high side, and pooled. The realised number of scenes per side is in the manifest. A scene's side comes from its buoyancy. Input amplitude and flow regime leave their ranges together in this set, so a rise in doubt can't be divided between them (`docs/DECISIONS.md` B20).
 
-The low side's plumes reach obstacles late in the window, or after it. In the check groups under "Horizon", 2 of 8 sampled scenes and 6 of 8 corner scenes first touch after frame 70, so those have no obstacle contact in the window at all. Its figures therefore say more about an unfamiliar flow than about flow around obstacles, and this is stated beside them. The report gives the number of low-side scenes with no contact by frame 70 in the set itself, using the check groups' rule on the stored reference: density above 0.01 in a fluid cell next to the obstacle. These scenes aren't dropped.
+The low side's plumes reach obstacles late in the window, or after it. In the check groups under "Horizon", 2 of 8 sampled scenes and 6 of 8 corner scenes first touch after frame 70, so those have no obstacle contact in the window at all. Its figures therefore say more about an unfamiliar flow than about flow around obstacles, and this is stated beside them. The report gives the number of low-side scenes with no contact by frame 70 in the set itself. These scenes aren't dropped.
+
+**Contact on the stored reference.** A scene has contact by frame 70 if, in any frame `f` from 1 to 70, stored density is above 0.01 in a cell that isn't solid in `obstacle(i, f - 1)` and has a solid cell of that mask in its 3×3 neighbourhood. The box's own walls don't count.
+
+This is a coarse rule, and it isn't the check groups' measurement. Those use 256×256 density in a 3×3 ring around the fine solid. The stored reference holds 2×2 averages, on a dilated coarse mask, and fine states exist only at frame 20, so the fine rule can't be applied to the set. Averaging can hide thin smoke, while the coarse ring reaches further out, so the two can differ in either direction. The set's count therefore isn't compared with the first-touch frames in the table under "Horizon", and is reported with this rule named beside it.
 
 ## Late obstacles
 
@@ -155,4 +172,5 @@ The result that answers the project's question is the primary metric of doubt-ba
 |---|---|---|
 | 2026-11-03 | First version | |
 | 2026-11-03 | Stated the rollouts and frames of the evidence measure, calibration, risk-coverage and AUROC. Added the rules for non-finite doubt, the trigger, a candidate grid for `tau`, a selection order, baseline schedules, a rule for unmatched budgets, the comparison, and travel above the thinnest wall. Gave both `test_c` low-side check groups | Review before any data or model existed: results could still have been chosen after being seen. `docs/DECISIONS.md` B31 to B35 |
+| 2026-11-03 | Stated the coarse contact rule for `test_c`, and added the oracle's rule. Travel became a distance, with its command, the controls' population and what happens with no control. The manifest's tracked copy and the normaliser's checksum are now checked | Second review, before any data or model existed: the oracle's `tau` and the contact count could have been chosen after being seen, and the travel rule couldn't be applied to a scene with no late obstacle. `docs/DECISIONS.md` B37 to B41 |
 | | Code commit for `--final`: to be recorded in Task 9 | |

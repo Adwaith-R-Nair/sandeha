@@ -275,3 +275,36 @@ Each major decision, the alternatives and the reason. Status is **Default** for 
 - **Alternatives:** write each timing entry atomically to its own file, or stop and ask for a hand edit.
 - **Reason:** timing isn't part of the data, and the design requires a long job to be safe to restart. A torn last line raised `JSONDecodeError` after all simulation and joining, on every resume. Without the cut, the next entry would have joined the torn one and been lost too.
 - **Cost:** a lost line understates that batch's time in the manifest's totals. `by_split` scene counts then fall short of the split's size.
+
+### B37: The travel rule runs on any named scene, from the manifest alone (2026-11-03). Changed after review
+
+- **Decision:** `src/sandeha/data/travel.py` holds the restart and the rule. `scripts/check_travel.py --data-root data` applies it to a finished dataset, reading only the manifest and rerunning scenes from their seeds. Controls exclude named scenes. A split with no control, or a figure that isn't a number, doesn't pass. A restart frame within 5 frames of the scene's end moves back.
+- **Alternatives:** a separate script, or leaving the restart in the script and having tests load it by path.
+- **Reason:** the preregistration pointed to a tool that raised `TypeError` on any scene with no late obstacle, which is every `test_b` and `test_c` scene, and it accepted only its own seed and late scenes. No command could apply the rule. `max` in Python can pass over a NaN, which a new test showed, so a NaN figure would have read as a pass.
+- **Cost:** the manifest's tracked copy is uncommitted during the spot-check, so this mode runs on such a tree and records `git_dirty` instead of refusing.
+
+### B38: The factor of 2 hasn't been judged against its own controls (2026-11-03). Open
+
+- **Decision:** the factor stays at 2 for now. `scripts/check_travel.py --control-sample` measures the rule's controls on 16 scenes per split, of every kind, at a seed outside the dataset, and its figures are logged before generation.
+- **Alternatives:** limit controls to late-obstacle scenes, which `test_b` and `test_c` don't have. Or keep the sample and say nothing, which leaves the mismatch hidden.
+- **Reason:** B35's figures of 0.034 to 0.070 come from late-obstacle scenes only. That sample's run is at the planned grid, so it was left out of this tiny-data work and hasn't been run. The code path is tested at 64×64.
+
+### B39: Travel is a distance (2026-11-03). Changed after review
+
+- **Decision:** `travel_cells` takes each cell's faster `u` face and faster `v` face, and combines them as a speed. Generation and `scripts/check_travel.py` use it. The manifest's field names are unchanged.
+- **Alternatives:** the cell-centred speed, which averages faces and can read low at a spike. Or `sqrt(2)` times the largest component, which is simpler and always at the limit of the overstatement.
+- **Reason:** the largest single component was compared with a wall's thickness, which is a distance in any direction, so a diagonal flow could read up to `sqrt(2)` low. An upper bound errs towards naming a scene, and naming one only costs a comparison.
+- **Cost:** figures saved before this change use the old measure and read lower: `results/travel_check.json` (including the 9.97 scene, B35) and `results/generation_estimate.json`. They weren't rerun. The 9.97 scene had a 2.6% margin on the old measure, so on this one it may be above the wall, as could real scenes that would have gone unnamed. The stored fields don't change.
+
+### B40: A coarse contact rule, and an oracle rule, before any model (2026-11-03). Changed after review
+
+- **Decision:** `test_c`'s no-contact count uses a stated rule on the stored reference, not the check groups' measurement. The oracle's budget is the baselines' budget on each set, its `tau` comes from a fixed search, and a non-finite output triggers it at any `tau`. Its figures are descriptive.
+- **Alternatives:** storing every fine frame to use the fine rule, which multiplies the data's size. For the oracle, a `tau` frozen on validation, whose share on a test set wouldn't match the budget, so it wouldn't bound anything at that budget.
+- **Reason:** the two measurements differ in grid, mask and ring, and the preregistration called them the same rule. The oracle had a `tau` in `docs/PLAN.md` and a bound in Task 9 with no rule at all, so both could have been chosen after results were seen.
+- **Cost:** the oracle's `tau` is set on a test set's reference, the one exception to thresholds coming from validation. It chooses nothing else. The search can add 9 rollout sets per set or side, which isn't measured. No model exists, so these rules were written from text alone.
+
+### B41: The manifest's tracked copy and the normaliser's checksum are checked (2026-11-03). Changed after review
+
+- **Decision:** `read_manifest` requires `data/manifest.json` to match `results/data_manifest.json`, and is what `open_split` and `Normalizer.load` read. `Normalizer.load` compares a normaliser beside a manifest with the checksum there.
+- **Alternatives:** an argument naming the copy, which every caller must remember. Or comparing with the copy in the last commit, which would block the spot-check, since the copy is committed after it.
+- **Reason:** a split replaced with its manifest passed the lock, and an edited normaliser went unnoticed. **Limits:** only the default root `data/` is compared with the copy, so `--final` must use it. The comparison reads the working file, so replacing all of them together passes this check, and shows only as a change to a tracked file and in `git_dirty`.

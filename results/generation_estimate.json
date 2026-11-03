@@ -1,5 +1,5 @@
 {
- "git_commit": "3d7ba637e305222deab7dbca6a9b1b8d5f2dc2bf",
+ "git_commit": "a666896b09880760afa2f8d4cf0cd4eff0a38184",
  "git_dirty": false,
  "config": {
   "seed": 20261104,
@@ -27,80 +27,80 @@
   "temperature.gpu": "57",
   "clocks.sm": "210 MHz",
   "clocks_throttle_reasons.active": "0x0000000000000001",
-  "power.draw": "16.14 W"
+  "power.draw": "16.11 W"
  },
  "gpu_after": {
   "temperature.gpu": "79",
   "clocks.sm": "1605 MHz",
   "clocks_throttle_reasons.active": "0x0000000000000000",
-  "power.draw": "41.58 W"
+  "power.draw": "40.64 W"
  },
- "measurement_wall_seconds": 431.3057439920012,
+ "measurement_wall_seconds": 432.3233636620025,
  "batch_comparison_train": {
   "8": {
    "scenes": 16,
-   "seconds_per_scene": 5.003373196437451,
-   "peak_gpu_mib": 172.9736328125
+   "seconds_per_scene": 5.01810840762505,
+   "peak_gpu_mib": 172.97412109375
   },
   "16": {
    "scenes": 16,
-   "seconds_per_scene": 3.5666738292500213,
-   "peak_gpu_mib": 345.85595703125
+   "seconds_per_scene": 3.567098170999998,
+   "peak_gpu_mib": 345.8564453125
   }
  },
  "chosen_batch_size": 16,
- "peak_gpu_mib": 345.87158203125,
+ "peak_gpu_mib": 345.8720703125,
  "per_split": {
   "train": {
    "scenes_measured": 16,
-   "seconds_per_scene": 3.6150613666250138,
-   "sampling_seconds_per_scene": 0.012831352062448786,
-   "solving_seconds_per_scene": 3.5832828236250407,
-   "writing_seconds_per_scene": 0.018947190937524283,
-   "item_steps_per_second": 133.95537657125436
+   "seconds_per_scene": 3.6251886975624075,
+   "sampling_seconds_per_scene": 0.013079696187332956,
+   "solving_seconds_per_scene": 3.5927446040000177,
+   "writing_seconds_per_scene": 0.019364397375056797,
+   "item_steps_per_second": 133.60259436910357
   },
   "val": {
    "scenes_measured": 16,
-   "seconds_per_scene": 3.5290101172499817,
-   "sampling_seconds_per_scene": 0.012744113562575876,
-   "solving_seconds_per_scene": 3.4969433114374624,
-   "writing_seconds_per_scene": 0.01932269224994343,
-   "item_steps_per_second": 137.26273412270157
+   "seconds_per_scene": 3.5490313414375123,
+   "sampling_seconds_per_scene": 0.01314758950002215,
+   "solving_seconds_per_scene": 3.5158549341249454,
+   "writing_seconds_per_scene": 0.02002881781254473,
+   "item_steps_per_second": 136.52440416159158
   },
   "test_a": {
    "scenes_measured": 16,
-   "seconds_per_scene": 3.7342463521249556,
-   "sampling_seconds_per_scene": 0.013201046750054957,
-   "solving_seconds_per_scene": 3.7018134854374694,
-   "writing_seconds_per_scene": 0.019231819937431283,
-   "item_steps_per_second": 129.66617629123337
+   "seconds_per_scene": 3.7620538301875968,
+   "sampling_seconds_per_scene": 0.01347672968745428,
+   "solving_seconds_per_scene": 3.7268219114375825,
+   "writing_seconds_per_scene": 0.02175518906256002,
+   "item_steps_per_second": 128.7960657650113
   },
   "test_b": {
    "scenes_measured": 16,
-   "seconds_per_scene": 3.868613912625051,
-   "sampling_seconds_per_scene": 0.05422712012500597,
-   "solving_seconds_per_scene": 3.7952043473751473,
-   "writing_seconds_per_scene": 0.01918244512489764,
-   "item_steps_per_second": 126.47540318401545
+   "seconds_per_scene": 3.867735475187601,
+   "sampling_seconds_per_scene": 0.05221421881265087,
+   "solving_seconds_per_scene": 3.7954925786873446,
+   "writing_seconds_per_scene": 0.020028677687605523,
+   "item_steps_per_second": 126.46579858838929
   },
   "test_c": {
    "scenes_measured": 16,
-   "seconds_per_scene": 3.406586312374884,
-   "sampling_seconds_per_scene": 0.012724583624958541,
-   "solving_seconds_per_scene": 3.374867851875024,
-   "writing_seconds_per_scene": 0.018993876874901616,
-   "item_steps_per_second": 142.22779115138374
+   "seconds_per_scene": 3.408795772124904,
+   "sampling_seconds_per_scene": 0.012866512749951653,
+   "solving_seconds_per_scene": 3.3754924649999793,
+   "writing_seconds_per_scene": 0.020436794374973033,
+   "item_steps_per_second": 142.20147281531644
   }
  },
  "sample_seconds": {
-  "sampling": 1.691651458000706,
-  "solving": 287.2337891160023,
-  "writing": 1.530848401995172,
-  "assembling": 1.6284103680009139,
-  "hashing": 0.5409964470018167,
-  "normalizer": 1.2204082440002821
+  "sampling": 1.6765559509985906,
+  "solving": 288.1025038919979,
+  "writing": 1.6258220210038417,
+  "assembling": 1.5054208189976634,
+  "hashing": 0.5569882740019239,
+  "normalizer": 1.1248361110010592
  },
- "sample_wall_seconds": 293.99031087800176,
+ "sample_wall_seconds": 294.755990403999,
  "sample_bytes": 1053835490,
  "sample_solver_health": {
   "train": {
@@ -109,6 +109,44 @@
    "max_cg_iterations": 13,
    "max_divergence": 0.0034809112548828125,
    "max_travel_cells_per_step": 4.503719329833984,
+   "travel_by_scene": [
+    3.3539669513702393,
+    3.4051506519317627,
+    2.551898956298828,
+    4.381141185760498,
+    2.7323756217956543,
+    2.894176959991455,
+    3.4297914505004883,
+    2.58626127243042,
+    2.626875877380371,
+    3.2479422092437744,
+    3.4436404705047607,
+    3.8610799312591553,
+    4.503719329833984,
+    2.89644455909729,
+    3.455380439758301,
+    4.417029857635498
+   ],
+   "travel_frame_by_scene": [
+    86,
+    109,
+    114,
+    101,
+    89,
+    119,
+    119,
+    48,
+    47,
+    119,
+    108,
+    48,
+    116,
+    36,
+    98,
+    92
+   ],
+   "thinnest_wall_cells": 10.24,
+   "scenes_over_thinnest_wall": [],
    "max_density_in_solid": 0.0,
    "rounding_rms": [
     3.165910486162748e-05,
@@ -127,6 +165,44 @@
    "max_cg_iterations": 16,
    "max_divergence": 0.002960205078125,
    "max_travel_cells_per_step": 5.2997589111328125,
+   "travel_by_scene": [
+    2.742072343826294,
+    3.2431797981262207,
+    3.2355527877807617,
+    1.6848000288009644,
+    2.444702625274658,
+    3.734334945678711,
+    5.2997589111328125,
+    2.4476025104522705,
+    3.196606397628784,
+    2.3095452785491943,
+    2.97234845161438,
+    3.644566774368286,
+    2.635995626449585,
+    3.2970988750457764,
+    2.013706684112549,
+    2.244135618209839
+   ],
+   "travel_frame_by_scene": [
+    45,
+    114,
+    53,
+    23,
+    98,
+    79,
+    100,
+    36,
+    30,
+    119,
+    92,
+    119,
+    50,
+    81,
+    85,
+    48
+   ],
+   "thinnest_wall_cells": 10.24,
+   "scenes_over_thinnest_wall": [],
    "max_density_in_solid": 0.0,
    "rounding_rms": [
     2.8338353273959743e-05,
@@ -145,6 +221,44 @@
    "max_cg_iterations": 17,
    "max_divergence": 0.00319671630859375,
    "max_travel_cells_per_step": 4.993209362030029,
+   "travel_by_scene": [
+    1.86700439453125,
+    4.993209362030029,
+    3.4344706535339355,
+    3.2467617988586426,
+    4.081315040588379,
+    3.3931961059570312,
+    3.0109407901763916,
+    4.235138416290283,
+    3.3045549392700195,
+    2.983384132385254,
+    2.6571431159973145,
+    3.498641014099121,
+    3.9172158241271973,
+    2.4905593395233154,
+    2.999699354171753,
+    3.880152463912964
+   ],
+   "travel_frame_by_scene": [
+    29,
+    47,
+    79,
+    52,
+    110,
+    118,
+    82,
+    108,
+    65,
+    48,
+    100,
+    112,
+    82,
+    68,
+    119,
+    73
+   ],
+   "thinnest_wall_cells": 10.24,
+   "scenes_over_thinnest_wall": [],
    "max_density_in_solid": 0.0,
    "rounding_rms": [
     3.398255701223074e-05,
@@ -163,6 +277,44 @@
    "max_cg_iterations": 16,
    "max_divergence": 0.0030364990234375,
    "max_travel_cells_per_step": 4.134696960449219,
+   "travel_by_scene": [
+    3.2147438526153564,
+    2.3433783054351807,
+    2.874718189239502,
+    2.9023141860961914,
+    3.2156383991241455,
+    2.7751781940460205,
+    2.901850461959839,
+    1.7344651222229004,
+    3.7180843353271484,
+    3.6660914421081543,
+    4.134696960449219,
+    3.963233470916748,
+    3.4124913215637207,
+    1.9162657260894775,
+    1.658691167831421,
+    3.466283082962036
+   ],
+   "travel_frame_by_scene": [
+    87,
+    53,
+    99,
+    105,
+    71,
+    34,
+    48,
+    26,
+    108,
+    119,
+    67,
+    64,
+    38,
+    30,
+    53,
+    115
+   ],
+   "thinnest_wall_cells": 10.24,
+   "scenes_over_thinnest_wall": [],
    "max_density_in_solid": 0.0,
    "rounding_rms": [
     2.7354348147337056e-05,
@@ -181,6 +333,44 @@
    "max_cg_iterations": 12,
    "max_divergence": 0.0030059814453125,
    "max_travel_cells_per_step": 6.59502649307251,
+   "travel_by_scene": [
+    1.271369457244873,
+    1.248502254486084,
+    5.600772380828857,
+    5.619017124176025,
+    1.4989795684814453,
+    1.205600380897522,
+    1.5566937923431396,
+    1.1752171516418457,
+    5.302385330200195,
+    6.080137729644775,
+    1.7059601545333862,
+    6.59502649307251,
+    1.4675952196121216,
+    1.1107386350631714,
+    1.641784429550171,
+    1.0543760061264038
+   ],
+   "travel_frame_by_scene": [
+    119,
+    80,
+    80,
+    119,
+    117,
+    108,
+    54,
+    73,
+    35,
+    109,
+    85,
+    61,
+    80,
+    117,
+    64,
+    43
+   ],
+   "thinnest_wall_cells": 10.24,
+   "scenes_over_thinnest_wall": [],
    "max_density_in_solid": 0.0,
    "rounding_rms": [
     3.672300522123307e-05,
@@ -205,20 +395,20 @@
  "planned_gb": 4.742259705,
  "estimate_seconds": {
   "simulate_by_split": {
-   "train": 867.6147279900033,
-   "val": 105.87030351749945,
-   "test_a": 112.02739056374867,
-   "test_b": 116.05841737875153,
-   "test_c": 102.19758937124652
+   "train": 870.0452874149778,
+   "val": 106.47094024312537,
+   "test_a": 112.8616149056279,
+   "test_b": 116.03206425562803,
+   "test_c": 102.26387316374712
   },
-  "assembling": 7.3278466560041124,
-  "hashing": 2.434484011508175,
-  "normalizer": 18.306123660004232,
-  "total": 1331.836883148766
+  "assembling": 6.7743936854894855,
+  "hashing": 2.5064472330086573,
+  "normalizer": 16.872541665015888,
+  "total": 1333.8271625666202
  },
- "estimate_hours": 0.3699546897635461,
- "if_every_scene_cost_the_slowest_split_hours": 0.3946581841312597,
- "if_every_scene_cost_the_fastest_split_hours": 0.348455424106243,
+ "estimate_hours": 0.37050754515739454,
+ "if_every_scene_cost_the_slowest_split_hours": 0.3940383760141807,
+ "if_every_scene_cost_the_fastest_split_hours": 0.34814440570791094,
  "budget_hours": 1.5,
  "within_budget": true,
  "not_included": [

@@ -42,6 +42,7 @@ src/sandeha/
   physics/scenes.py      Scene, sample_scene, shape families
   data/store.py          on-disk format, split guard
   data/generate.py       generation, resuming, manifest
+  data/travel.py         the spot-check's travel rule
   data/dataset.py        StepDataset, Normalizer
   models/unet.py         UNet
   models/fno.py          FNO2d
@@ -144,7 +145,7 @@ def sample_scene(rng: np.random.Generator, res: int, split: str) -> Scene: ...
 
 ### Task 4: Generation and test-set lock
 
-**Files:** `src/sandeha/data/store.py`, `src/sandeha/data/dataset.py`, `scripts/generate_data.py`, `configs/data.yaml`, `docs/PREREGISTRATION.md`, tests
+**Files:** `src/sandeha/data/store.py`, `src/sandeha/data/dataset.py`, `src/sandeha/data/travel.py`, `scripts/generate_data.py`, `scripts/check_travel.py`, `configs/data.yaml`, `docs/PREREGISTRATION.md`, tests
 
 **Produces:**
 ```python
@@ -173,7 +174,7 @@ Starting sizes, scaled down if the measured solver speed would exceed the 1.5 h 
 - [ ] Implement. Writes are atomic per scene. `data/manifest.json` records seeds, config, git commit and SHA-256 of every split.
 - [ ] Before generation, write `docs/PREREGISTRATION.md`. It fixes: primary metric, horizon 50 AI steps from start frame 20 (extended only if solver checks show the plume hasn't reached typical obstacles by then), secondary metrics, within-time correlation as the evidence measure, bad-frame threshold rule, threshold rule (Task 8), baseline budget rule, test-set policy, `test_c` results reported per side as well as pooled, and how late obstacles after the window are treated. Commit it **before** any model exists.
 - [ ] Run `scripts/long_job.sh data uv run scripts/generate_data.py --config configs/data.yaml`.
-- [ ] Spot-check: render a sample scene from each split, and check stats, NaN count (must be 0), the manifest, and the rule in `docs/PREREGISTRATION.md` for travel above the thinnest wall. Log timings. Commit.
+- [ ] Spot-check: render a sample scene from each split, and check stats, NaN count (must be 0), the manifest, and the rule in `docs/PREREGISTRATION.md` for travel above the thinnest wall, with `uv run python scripts/check_travel.py --data-root data`. Log timings. Commit.
 
 ---
 
@@ -259,7 +260,7 @@ Selection on validation only, and recorded in `results/handoff_selection.json`, 
 - `handoff_frames` from `{2, 5, 10}` and doubt aggregation from `{mean, p95, p99}`, by best rank correlation and error at equal budget.
 - **Frozen threshold `tau`:** the value giving lowest primary error with solver share at or below 25% on validation.
 
-Hand-off follows the preregistration's hand-off rules: non-finite doubt triggers under any finite `tau`, non-finite output forces a hand-off under fixed and random policies too, the solver starts from the frame before, and `FixedSchedule` takes a per-scene offset.
+Hand-off follows the preregistration's hand-off rules: non-finite doubt triggers under any finite `tau`, non-finite output forces a hand-off under fixed, random and oracle policies too, the solver starts from the frame before, and `FixedSchedule` takes a per-scene offset. `Oracle` reads the error of the current frame only, and its `tau` is set per set by the preregistration's oracle rule.
 
 - [ ] Failing tests: `test_handoff_returns_low_divergence_state`, `test_fixed_schedule_period`, `test_random_budget_rate_within_tolerance`, `test_threshold_triggers_only_above_tau`, `test_non_finite_doubt_triggers_and_starts_from_the_last_finite_frame`, `test_non_finite_output_forces_a_handoff_under_every_policy`, `test_never_candidate_does_not_hand_off`, `test_oracle_never_reads_future`, `test_obstacle_change_applies_next_frame`, `test_time_accounting_includes_every_member`.
 - [ ] Implement, see tests pass, and commit.
@@ -292,6 +293,7 @@ Experiments, per design sections 6.1 to 6.4:
   - `test_blown_up_rollout_counts_as_max_error`: NaN state gives capped maximum error, and the frame stays in the average.
   - `test_non_finite_doubt_ranks_highest`: in Spearman, AUROC, calibration and risk-coverage, the frame stays and ranks above all finite scores.
   - `test_undefined_time_is_left_out_and_counted`, `test_selection_steps_and_tie_breaks`, `test_baseline_schedule_nearest_the_budget`, `test_unmatched_budget_runs_both_neighbours`.
+  - `test_oracle_tau_search_keeps_the_nearest_share`, `test_oracle_is_not_run_on_a_budget_of_zero`, `test_no_contact_count_uses_the_coarse_rule`.
   - `test_results_carry_provenance`.
   - `test_render_results_refuses_missing_provenance`.
   - `test_experiments_use_val_unless_final`: without `--final`, only `val` is opened.

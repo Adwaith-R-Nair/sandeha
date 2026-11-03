@@ -699,3 +699,95 @@ Unchanged, and not measured again: **0.37 h (22.2 minutes) of computing against 
 
 Generate the dataset and spot-check it, then Task 5.
 
+
+## 2026-11-03: Phase 3, Task 4 (second review fixes)
+
+The full dataset has still **not** been generated, and the spot-check has not been run. No file exists under `data/`. Tests ran on tiny data only.
+
+### Each review finding, checked before changing anything
+
+| Finding | How it was checked | Result |
+|---|---|---|
+| The restart crashes on a scene with no late obstacle | New test on the old function, on `test_b` and `test_c` scenes | Real: `TypeError: expected np.ndarray (got NoneType)` |
+| No command applies the rule to a dataset | Reading `scripts/check_travel.py` | Real: own seed and late scenes only |
+| Factor of 2 judged on another population | `results/travel_check.json`, reading the rule | Real. Not closed: see below |
+| Contents of `fine_state` and `fine_late_obstacle` untested | 3 mutants on a clone of `a666896`, `tests/data` in full | Real: 90 passed on the control and on each of channels swapped, all zeros, and base obstacle stored as late |
+| Coarse and fine contact rules called the same | `scripts/check_scenes.py`, reading the store | Real |
+| No rule for the oracle | Reading the preregistration and `docs/PLAN.md` | Real |
+| Travel is a component, compared with a distance | New test with a diagonal flow on the old formula | Real: failed |
+| Normaliser's checksum never checked | New test on the old code | Real: failed |
+| Manifest never compared with its tracked copy | New tests on the old code | Real: failed |
+| Estimate doesn't trace to `a666896` | Reading both JSON files | Real: tracked file at `3d7ba63` |
+
+The review's other claims about tiny-run byte matches and cell-centred ratios weren't repeated.
+
+### Code and documents
+
+- `src/sandeha/data/travel.py` is new, beyond the plan's file list, and holds the restart and the rule (B37). `scripts/check_travel.py --data-root data` applies it, and `--control-sample` measures the rule's controls (B38).
+- `travel_cells` makes travel a distance (B39).
+- `read_manifest` compares `data/manifest.json` with its tracked copy, and `Normalizer.load` checks its checksum (B41).
+- `docs/PREREGISTRATION.md` has the coarse contact rule and the oracle's rule (B40), and `docs/PLAN.md` lists their tests for Tasks 8 and 9.
+- `results/generation_estimate.json` is replaced by the measurement at `a666896` below.
+
+### Test runs
+
+| Step | Result |
+|---|---|
+| New tests on old behaviour, with names added so that they could load | 19 failed, 18 passed. Those that passed include the fine-state tests, which check code already correct and are shown by the mutants below |
+| First implementation, on `tests/data/test_travel.py`, `test_store.py`, `test_dataset.py` | 78 passed, 1 failed. A real fault: Python's `max` passed over a NaN figure, so it read as a pass. Fixed with `np.max`, and the test now covers a NaN control too |
+| Full suite, `uv run pytest`, at `dd78b8d` | 321 passed in 333.30s |
+
+### Mutants, on the new tests
+
+Run on clones of `dd78b8d`, on the 4 data test files, stopping at the first failure. Control: 125 passed. All 11 mutants were killed.
+
+| Mutant | Killed by |
+|---|---|
+| Fine channels swapped | `test_fine_state_pools_to_the_stored_frame` |
+| Fine states all zeros | Same |
+| Fine late obstacle stored as the base obstacle | `test_late_obstacle_at_both_grids_is_the_one_sampled` |
+| No normaliser check | `test_an_edited_normalizer_is_refused` |
+| No comparison with the tracked copy | `test_replacing_a_split_and_its_manifest_together_is_detected` |
+| Travel as the larger component | `test_fields_match_a_direct_solver_run` |
+| Restart without the check for no late obstacle | `test_restart_works_on_a_scene_with_no_late_obstacle` |
+| Named scenes allowed as controls | `test_a_split_with_no_control_is_not_accepted` |
+| Factor of 2.5 | `test_named_scene_against_twice_the_largest_control` |
+| No move back from the scene's end | `test_a_restart_stays_inside_the_scene` |
+| Python's `max` for the figure | `test_a_figure_that_is_not_a_number_does_not_pass` |
+
+### Time estimate
+
+From `results/generation_estimate.json`, measured at `a666896` with a clean tree under `scripts/long_job.sh`, in a clone, on 80 sample scenes at seed 900001. **1333.8 s, or 0.37 h, against the 1.5 h budget**, for the planned 360 scenes and 4.74 GB.
+
+| Step | Seconds |
+|---|---|
+| Simulate `train` | 870.0 |
+| Simulate `val` | 106.5 |
+| Simulate `test_a` | 112.9 |
+| Simulate `test_b` | 116.0 |
+| Simulate `test_c` | 102.3 |
+| Join files | 6.8 |
+| Checksums | 2.5 |
+| Fit the normaliser | 16.9 |
+
+Every scene at the slowest and fastest split's cost gives 0.394 h and 0.348 h. Peak GPU memory was 346 MiB. Batch 16 took 3.57 s per scene against 5.02 s at batch 8. The sample had no unconverged solves and no scene above the wall, with a largest travel of 6.60 cells on the old measure. The GPU went from 57°C to 79°C, with no active throttle reason at the end. The earlier measurement, at `3d7ba63`, was 1331.8 s.
+
+This wasn't measured again at the new code. The new travel figure took 0.375 ms per call against 0.116 ms at batch 16 and 256×256, in a scratch timing with no saved result. At 11040 calls that adds about 3 s. The estimate is extrapolated from a 7-minute run, so 22 minutes of sustained heat isn't covered, and disk cache effects and the spot-check aren't either.
+
+The review also ran a resume at 256×256 with late obstacles, cut after 2 scenes, and reports the same checksums as an uninterrupted run, which addresses that open item from the earlier entry. Its result wasn't saved to a tracked file, and it wasn't repeated here.
+
+### Open items
+
+- **Before generation:** run `scripts/long_job.sh travel-controls uv run python scripts/check_travel.py --control-sample` and log its figures (B38). It runs 80 scenes at the planned grid, and takes about the sample's 288 s of solving plus 15 restarts, which isn't measured. It hasn't been run, because this work was limited to tiny data. The factor of 2 stays unjudged against its own controls until then.
+- **Travel figures are now higher than saved ones** (B39). `results/travel_check.json` wasn't rerun, and the 9.97 scene may be above the wall on the new measure. A named scene in the real data is more likely than the earlier entry suggests, and the rule covers it.
+- **The restart from a single run** was confirmed for the 9.97 scene only. The rule doesn't check that a restart reproduces the stored spike.
+- **The oracle and contact rules** were written from text alone, with no code to run them. Task 9 implements them, and must measure the oracle's cost.
+
+### Not done
+
+- The full generation and its spot-check.
+- The independent phase check and push for Phase 2 and this phase. Nothing was pushed.
+
+### Next
+
+Measure the controls, generate the dataset and spot-check it, then Task 5.
