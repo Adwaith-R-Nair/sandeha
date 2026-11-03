@@ -207,6 +207,61 @@ def test_killed_process_resumes_to_the_same_bytes(tmp_path):
     assert copy == manifest_of(cut)
 
 
+@pytest.mark.parametrize(
+    "torn",
+    [b'{"split": "train", "sta', b"\x00\x00\x00\x00", b'{"split": "tr\xff'],
+    ids=["partial", "zeros", "not_text"],
+)
+def test_resume_survives_a_torn_timing_line(tmp_path, uninterrupted, torn):
+    """A power loss or a full disk can leave part of a line. Timing mustn't cost the dataset."""
+    root = tmp_path / "data"
+    with pytest.raises(Stop):
+        generate(tiny_config(), root, allow_dirty=True, on_scene=stop_after(4))
+    timing = root / "timing.jsonl"
+    whole = timing.read_bytes()
+    assert whole
+    timing.write_bytes(whole + torn)
+
+    # The next batch's line must not join on to the torn one, and be lost with it.
+    with pytest.raises(Stop):
+        generate(tiny_config(), root, allow_dirty=True, on_scene=stop_after(3))
+    assert timing.read_bytes().startswith(whole + b'{"split": "val"')
+
+    manifest = generate(tiny_config(), root, allow_dirty=True)
+    assert hashes(root) == uninterrupted
+    assert manifest["timing"]["unreadable_lines"] == 0
+
+
+def test_an_unreadable_line_inside_the_timing_file_is_counted(tmp_path, uninterrupted):
+    root = tmp_path / "data"
+    with pytest.raises(Stop):
+        generate(tiny_config(), root, allow_dirty=True, on_scene=stop_after(4))
+    timing = root / "timing.jsonl"
+    timing.write_bytes(b'{"split": "tr\n[1, 2]\n{"split": "train"}\n' + timing.read_bytes())
+
+    manifest = generate(tiny_config(), root, allow_dirty=True)
+    assert hashes(root) == uninterrupted
+    assert manifest["timing"]["unreadable_lines"] == 3
+    assert manifest["timing"]["by_split"]["train"]["scenes"] == 3
+
+
+def test_a_missing_timing_file_costs_only_the_timing(tmp_path, uninterrupted):
+    root = tmp_path / "data"
+    with pytest.raises(Stop):
+        generate(tiny_config(), root, allow_dirty=True, on_scene=stop_after(9))  # The last scene.
+    (root / "timing.jsonl").unlink()
+    manifest = generate(tiny_config(), root, allow_dirty=True)
+    assert hashes(root) == uninterrupted
+    assert manifest["timing"]["by_split"] == {}
+
+
+def test_a_timing_line_is_on_disk_before_the_next_batch(tmp_path, monkeypatch):
+    synced = []
+    monkeypatch.setattr(generate_module.os, "fsync", lambda descriptor: synced.append(descriptor))
+    generate_module._record_timing(tmp_path, {"split": "train"})
+    assert len(synced) == 1
+
+
 def test_resume_refuses_a_changed_config(tmp_path):
     root = tmp_path / "data"
     with pytest.raises(Stop):
@@ -290,6 +345,7 @@ def test_fields_match_a_direct_solver_run(tmp_path, monkeypatch):
     lift = torch.tensor([scene.buoyancy], device=DEVICE, dtype=torch.float32)
     solver = SmokeSolver(64, DEVICE, 0.01)
     state = SmokeState(torch.zeros(1, 2, 64, 64, device=DEVICE), torch.zeros(1, 1, 64, 64, device=DEVICE))
+    travel = []
 
     def stored_view(state, solid):
         pooled = F.avg_pool2d(torch.cat([state.velocity, state.density], dim=1), 2)
@@ -301,7 +357,14 @@ def test_fields_match_a_direct_solver_run(tmp_path, monkeypatch):
         solid = new if frame - 1 >= 2 else old
         for _ in range(4):
             state = solver.step(state, solid, inflow, lift)
+            u, v = state.mac
+            travel.append((max(u.abs().max().item(), v.abs().max().item()) * 0.01 * 64, frame - 1))
         assert np.array_equal(np.asarray(store.fields[1, frame]), stored_view(state, solid)), frame
+
+    stats = manifest_of(root)["splits"]["train"]["stats"]
+    peak, peak_frame = max(travel, key=lambda entry: entry[0])
+    assert stats["travel_by_scene"][1] == pytest.approx(peak)
+    assert stats["travel_frame_by_scene"][1] == peak_frame
 
 
 def test_stored_values_are_real_flow(tiny_root):
@@ -372,6 +435,38 @@ def test_manifest_records_solver_health(tiny_root):
     assert stats["max_divergence"] > 0
 
 
+def test_manifest_records_each_scene_s_travel(tiny_root):
+    """A split's largest figure can't say which scene to look at."""
+    for split, entry in manifest_of(tiny_root)["splits"].items():
+        stats = entry["stats"]
+        assert len(stats["travel_by_scene"]) == entry["n_scenes"], split
+        assert len(stats["travel_frame_by_scene"]) == entry["n_scenes"], split
+        assert max(stats["travel_by_scene"]) == pytest.approx(stats["max_travel_cells_per_step"])
+        assert stats["thinnest_wall_cells"] == pytest.approx(0.04 * 64)
+        assert all(0 <= frame < 5 for frame in stats["travel_frame_by_scene"])
+
+
+def test_manifest_names_the_scenes_above_the_thinnest_wall(tmp_path, monkeypatch):
+    config = tiny_config(frames=3)
+    generate(config, tmp_path / "first", allow_dirty=True)
+    travel = manifest_of(tmp_path / "first")["splits"]["train"]["stats"]["travel_by_scene"]
+    limit = (min(travel) + max(travel)) / 2
+    assert min(travel) < limit < max(travel)
+
+    # Sampling keeps its own constant, so this moves only the limit, and the scenes stay the same.
+    monkeypatch.setattr(generate_module, "MIN_THICKNESS", limit / 64)
+    generate(config, tmp_path / "second", allow_dirty=True)
+    stats = manifest_of(tmp_path / "second")["splits"]["train"]["stats"]
+    assert stats["travel_by_scene"] == travel
+    assert stats["scenes_over_thinnest_wall"] == [i for i, value in enumerate(travel) if value > limit]
+
+
+def test_no_scene_is_named_when_travel_stays_under_the_thinnest_wall(tiny_root):
+    stats = manifest_of(tiny_root)["splits"]["train"]["stats"]
+    assert max(stats["travel_by_scene"]) < stats["thinnest_wall_cells"]
+    assert stats["scenes_over_thinnest_wall"] == []
+
+
 def test_manifest_records_how_float16_compares_with_the_change_per_frame(tiny_root):
     """float16 rounds each value, so the rounding must stay small against what the model learns."""
     stats = manifest_of(tiny_root)["splits"]["train"]["stats"]
@@ -395,6 +490,16 @@ def test_manifest_records_realised_late_share_and_test_c_sides(tmp_path, monkeyp
     assert "sides" not in splits["train"]
 
 
+def test_manifest_counts_test_c_sides_from_buoyancy(tmp_path):
+    """An odd count can't split evenly, so swapping the sides would change these numbers."""
+    root = tmp_path / "data"
+    config = tiny_config(frames=2, fine_frames=[], scenes={"train": 2, "val": 1, "test_a": 1, "test_b": 1, "test_c": 3})
+    generate(config, root, allow_dirty=True)
+    store = open_split(root, "test_c", final_eval=True)
+    low = sum(store.buoyancy(i) < 1.0 for i in range(3))
+    assert manifest_of(root)["splits"]["test_c"]["sides"] == {"low": low, "high": 3 - low}
+
+
 def test_manifest_records_timing(tiny_root):
     timing = manifest_of(tiny_root)["timing"]
     for key in ("sampling", "solving", "writing", "assembling", "hashing", "normalizer"):
@@ -403,6 +508,7 @@ def test_manifest_records_timing(tiny_root):
     per_split = timing["by_split"]["train"]
     assert per_split["scenes"] == 3
     assert per_split["solving"] > 0
+    assert timing["unreadable_lines"] == 0
 
 
 def test_missing_gpu_is_a_clear_error(tmp_path, monkeypatch):

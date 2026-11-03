@@ -32,7 +32,7 @@ from sandeha.data.store import (
     write_atomic,
     write_json_atomic,
 )
-from sandeha.physics.scenes import SPLITS, TRAIN_BUOYANCY, sample_scene
+from sandeha.physics.scenes import MIN_THICKNESS, SPLITS, TRAIN_BUOYANCY, sample_scene
 from sandeha.physics.solver import SmokeSolver, SmokeState
 
 REPO = Path(__file__).resolve().parents[3]
@@ -124,6 +124,7 @@ def _simulate_batch(config: dict, batch: list, device: torch.device) -> dict:
         "max_cg_iterations": torch.zeros(count, device=device, dtype=torch.long),
         "max_divergence": torch.zeros(count, device=device),
         "max_travel_cells_per_step": torch.zeros(count, device=device),
+        "max_travel_frame": torch.zeros(count, device=device, dtype=torch.long),
         "max_density_in_solid": torch.zeros(count, device=device),
     }
 
@@ -168,9 +169,10 @@ def _simulate_batch(config: dict, batch: list, device: torch.device) -> dict:
             stats["max_divergence"] = torch.maximum(stats["max_divergence"], report.residual)
             u, v = state.mac
             fastest = torch.maximum(u.abs().amax(dim=(1, 2, 3)), v.abs().amax(dim=(1, 2, 3)))
-            stats["max_travel_cells_per_step"] = torch.maximum(
-                stats["max_travel_cells_per_step"], fastest * config["dt"] * res
-            )
+            travel = fastest * config["dt"] * res
+            furthest = travel > stats["max_travel_cells_per_step"]
+            stats["max_travel_frame"][furthest] = frame
+            stats["max_travel_cells_per_step"][furthest] = travel[furthest]
         solid_into = solid
 
     pooled_obstacle = F.max_pool2d(obstacle.float(), factor) > 0
@@ -195,6 +197,7 @@ _STAT_NAMES = (
     "max_cg_iterations",
     "max_divergence",
     "max_travel_cells_per_step",
+    "max_travel_frame",
     "max_density_in_solid",
     "rounding_rms",
     "frame_change_rms",
@@ -218,6 +221,23 @@ def _write_scene(path: Path, seed: int, scene, result: dict, index: int) -> None
 def _record_timing(root: Path, entry: dict) -> None:
     with open(root / "timing.jsonl", "a") as file:
         file.write(json.dumps(entry) + "\n")
+        file.flush()
+        os.fsync(file.fileno())
+
+
+def _drop_torn_timing(root: Path, log: Callable[[str], None]) -> None:
+    """Cut anything after the last full line, so that the next line starts on a line of its own."""
+    path = root / "timing.jsonl"
+    if not path.exists():
+        return
+    content = path.read_bytes()
+    whole = content.rfind(b"\n") + 1
+    if whole == len(content):
+        return
+    with open(path, "rb+") as file:
+        file.truncate(whole)
+        os.fsync(file.fileno())
+    log(f"dropped {len(content) - whole} bytes of a torn last line from {path}")
 
 
 def _generate_split(config, root, split, device, on_scene, log) -> None:
@@ -301,6 +321,8 @@ def _assemble_split(config: dict, root: Path, split: str, fine_frames: list[int]
         lambda file: np.savez(file, frames=np.array(fine_frames, dtype=np.int64), states=np.stack(states)),
     )
 
+    travel = np.array(collected["max_travel_cells_per_step"], dtype=np.float64)
+    thinnest_wall = MIN_THICKNESS * config["res"]
     late_frames = [int(frame) for frame in arrays["late_frame"] if frame >= 0]
     entry = {
         "n_scenes": len(paths),
@@ -314,7 +336,11 @@ def _assemble_split(config: dict, root: Path, split: str, fine_frames: list[int]
             "item_steps": int(np.sum(collected["item_steps"])),
             "max_cg_iterations": int(np.max(collected["max_cg_iterations"])),
             "max_divergence": float(np.max(collected["max_divergence"])),
-            "max_travel_cells_per_step": float(np.max(collected["max_travel_cells_per_step"])),
+            "max_travel_cells_per_step": float(np.max(travel)),
+            "travel_by_scene": travel.tolist(),
+            "travel_frame_by_scene": [int(frame) for frame in collected["max_travel_frame"]],
+            "thinnest_wall_cells": thinnest_wall,
+            "scenes_over_thinnest_wall": np.flatnonzero(travel > thinnest_wall).tolist(),
             "max_density_in_solid": float(np.max(collected["max_density_in_solid"])),
             # Each scene's figure, averaged as squares, so that the result is an overall RMS.
             "rounding_rms": np.sqrt(np.mean(np.square(collected["rounding_rms"]), axis=0)).tolist(),
@@ -327,12 +353,36 @@ def _assemble_split(config: dict, root: Path, split: str, fine_frames: list[int]
     return entry
 
 
+def _read_timing_line(line: str) -> dict | None:
+    """One batch's entry, or None if the line can't be one."""
+    try:
+        entry = json.loads(line)
+        return {
+            "split": entry["split"],
+            "scenes": int(entry["scenes"]),
+            **{key: float(entry[key]) for key in ("sampling", "solving", "writing")},
+        }
+    except (ValueError, KeyError, TypeError):
+        return None
+
+
 def _summarise_timing(root: Path, extra: dict) -> dict:
-    """Add up every batch recorded, including those run before a restart."""
+    """Add up every batch recorded, including those run before a restart.
+
+    Timing is a record and not part of the data, so a line that can't be read costs that batch's
+    figures and no more. The number of such lines is reported.
+    """
     seconds = {"sampling": 0.0, "solving": 0.0, "writing": 0.0, **extra}
     by_split = {}
-    for line in (root / "timing.jsonl").read_text().splitlines():
-        entry = json.loads(line)
+    unreadable = 0
+    path = root / "timing.jsonl"
+    # Not all bytes of a damaged file are text, and those lines fail to parse anyway.
+    lines = path.read_text(errors="replace").splitlines() if path.exists() else []
+    for line in lines:
+        entry = _read_timing_line(line)
+        if entry is None:
+            unreadable += 1
+            continue
         split = by_split.setdefault(
             entry["split"], {"scenes": 0, "sampling": 0.0, "solving": 0.0, "writing": 0.0}
         )
@@ -340,7 +390,12 @@ def _summarise_timing(root: Path, extra: dict) -> dict:
         for key in ("sampling", "solving", "writing"):
             seconds[key] += entry[key]
             split[key] += entry[key]
-    return {"seconds": seconds, "total_seconds": sum(seconds.values()), "by_split": by_split}
+    return {
+        "seconds": seconds,
+        "total_seconds": sum(seconds.values()),
+        "by_split": by_split,
+        "unreadable_lines": unreadable,
+    }
 
 
 def generate(
@@ -383,6 +438,7 @@ def generate(
         log(f"{manifest_path} exists, so this dataset is finished and nothing was changed")
         return json.loads(manifest_path.read_text())
 
+    _drop_torn_timing(root, log)
     torch.cuda.reset_peak_memory_stats(device)
     for split in SPLITS:
         _generate_split(config, root, split, device, on_scene, log)
