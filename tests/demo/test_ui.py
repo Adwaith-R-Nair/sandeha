@@ -175,7 +175,7 @@ def test_layout_fits_1280x720(page):
 def test_discloses_untrained_models_and_member_count(page):
     expect(page.locator("#weights")).to_be_visible()
     expect(page.locator("#weights")).to_contain_text("Untrained")
-    expect(page.locator("#members")).to_contain_text("2 models")
+    expect(page.locator("#members")).to_contain_text("2 of 5 models")
 
 
 def test_touch_draws(browser, url):
