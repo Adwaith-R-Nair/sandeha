@@ -877,3 +877,7 @@ Built `src/sandeha/demo/static/` and `tests/demo/test_ui.py`, added Playwright a
 - **The video and README GIF aren't recorded.** They need trained models, so that what they show is the real system. That step of Task 12 is still open.
 - **The page has only seen untrained models on the CPU, at about 4 frames per second.** Check it again with trained weights on the GPU, especially the doubt scale of 2τ against real doubt, and whether anything looks wrong at 15 frames per second or more.
 - **Only Chrome has run it.** The Firefox slider styles are written but haven't been looked at.
+
+## 2026-11-03: Experiment progress fixes (stale rollouts, late ablations)
+
+Both were reproduced on tiny CPU data first. After a kept set's error was changed to 123.0, a new `Evaluation` under another commit returned 123.0 and stamped its results with the new commit. Adding ablation hashes to `checkpoint_sha256` raised "holds rollouts from other settings". Decision is B56. A set from other code now runs again and the old file is kept in `superseded/`. A late ablation joins the run, which `test_plain_run_reads_the_files_a_real_run_reads` checks through `scripts/run_experiments.py`. Kept sets are now a stamped object, not a bare list, and one in the old form runs again.
