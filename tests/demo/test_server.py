@@ -330,6 +330,7 @@ def test_threshold_and_mode_control_the_source():
         {"type": "preset", "name": "no such"},
         {"type": "threshold", "tau": math.nan},
         {"type": "threshold", "tau": -1.0},
+        {"type": "threshold"},
         {"type": "mode", "mode": "turbo"},
         ["not", "a", "dict"],
     ],
@@ -345,6 +346,7 @@ def test_bad_messages_do_not_end_the_connection():
         ws.send_text("{not json")
         ws.send_bytes(b"\x00")
         ws.send_text(json.dumps({"type": "nonsense"}))
+        ws.send_text(json.dumps({"type": "threshold"}))
         ws.send_text(json.dumps({"type": "mode", "mode": "solver"}))
         frames_until(ws, lambda f: f[0]["mode"] == "solver")
     assert sim.fatal is None

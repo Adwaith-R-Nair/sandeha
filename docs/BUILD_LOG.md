@@ -853,3 +853,7 @@ Built `src/sandeha/demo/server.py`, `scripts/run_demo.py` and `scripts/bench_dem
 
 - **`results/demo_bench.json` doesn't exist yet.** After training, run `uv run python scripts/bench_demo.py` with the GPU otherwise idle, and commit the file. Only random weights on the CPU have run so far, for 2 s per rung, which says nothing about the target.
 - **Trained loading and GPU behaviour haven't run.** That covers `results/ensemble.json`, `results/handoff_selection.json`, mixed precision and a real out-of-memory error, which the tests raise by hand.
+
+## 2026-11-03: Demo server fix (threshold without `tau`)
+
+A `{"type": "threshold"}` message passed `_checked`, raised `KeyError` on the simulation thread and stopped the server with exit 1. `_checked` now refuses it, so the client gets the same treatment as any other bad message, and null stays the only way to say "never". `tests/demo/test_server.py` covers it, both directly and over a WebSocket.

@@ -149,7 +149,9 @@ def _checked(message) -> dict:
         if message.get("name") not in PRESETS:
             raise ValueError(f"unknown preset {message.get('name')!r}, expected one of {PRESETS}")
     elif kind == "threshold":
-        if message.get("tau") is not None and _number(message["tau"], "tau") < 0:
+        if "tau" not in message:
+            raise ValueError("a threshold message must have tau, with null for never")
+        if message["tau"] is not None and _number(message["tau"], "tau") < 0:
             raise ValueError(f"tau can't be negative, got {message['tau']}")
     elif kind == "mode":
         if message.get("mode") not in MODES:
