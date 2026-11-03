@@ -20,7 +20,7 @@ Five small U-Nets, trained on this project's own 2D smoke simulations, predict o
 | Why U-Net | Lower validation rollout error than FNO on equal 40-minute budgets: 0.0915 against 0.1258, with persistence at 0.6689. One seed each | `arch_selection.json` |
 | Members | 5, seeds 0 to 4 | `ensemble.json` |
 | Member check | All 5 passed the first time. 100 steps on validation from frame 20, no blown-up frame, with error 0.605 to 0.640 against persistence's 1.127 | `ensemble.json` |
-| Weights | `runs/ensemble/seed_*/best.pt`, not in git. Their SHA-256 hashes are in `results/ensemble.json`. A release of the weights is planned, and this card doesn't record it as done | `ensemble.json` |
+| Weights | `runs/ensemble/seed_*/best.pt`, not in git. Their SHA-256 hashes are in `results/ensemble.json`. Release `v1.0` of the weights is planned and isn't published yet | `ensemble.json` |
 
 **Input (6 channels, 128×128):** velocity (2), density, solid mask, inflow map and buoyancy as a constant channel.
 
@@ -85,7 +85,7 @@ Doubt beat neither baseline on any set. On `test_b` the fixed schedule was bette
 | **Unseen shapes** | Doubt doesn't rise on `test_b` (chance of higher doubt 0.479 [0.335, 0.615]), though error does | Don't use doubt as a detector of unfamiliar geometry |
 | **Fast, strongly driven flows** | On the high side of `test_c`, score is 0.526, usable frames 81.0, and the coarse solver is no worse. 92.6% of frames are over `tau`, so the system takes 257.7 ms per frame, slower than the reference's 194.4 ms | Doubt is over the threshold almost all the time here, so it says little about any one frame. Don't treat the hybrid as a speed-up in this range |
 | **Long rollouts** | Evidence is for frames 21 to 70. Over 100 frames, the coarse solver's mean error is below the ensemble's on `test_b`, 0.503 against 0.529, with overlapping intervals. The within-time Spearman on `test_b` falls to 0.271 over frames 21 to 120 | Treat later frames as less reliable. Nothing was measured past frame 120, and the demo can run longer than that |
-| **Doubt as a moment-by-moment alarm** | Post-hoc and exploratory: about 90% of log-doubt variance after removing time is between scenes, and scene doubt tracks largest flow travel with Spearman 0.83 to 0.86 on `test_a`, `test_b` and the high side of `test_c`, though not on the low side | It's closer to a label on the scene than a warning about the current frame |
+| **Doubt as a moment-by-moment alarm** | Post-hoc and exploratory: after removing time, the share of log-doubt variance that is between scenes is about 90%, and 83% on the low side of `test_c`, and scene doubt tracks largest flow travel with Spearman 0.83 to 0.86 on `test_a`, `test_b` and the high side of `test_c`, though not on the low side | It's closer to a label on the scene than a warning about the current frame |
 | **Single-signal choice** | A plain divergence signal with no ensemble correlated better than doubt on `test_b`, 0.676 against 0.522, and worse on the high side of `test_c`, 0.174 against 0.388 | Don't assume the ensemble's doubt is the best available signal |
 | **Pointwise accuracy after about `t=1`** | The reference is one realisation of a chaotic flow (`PREREGISTRATION.md`) | Read the error with the secondary measures. It isn't a claim of physical wrongness or rightness |
 | **Fine scales** | Hand-offs lose more of the finest scales than the ensemble does, on `test_b` -0.223 for doubt and -0.269 for fixed against -0.208 in the highest spectrum band | Don't expect a brief solver hand-off to restore fine detail |
@@ -106,6 +106,8 @@ Each was one seed with a shorter, 25-minute training, for comparison only. Witho
 ## PUBLIC TRACK PENDING
 
 **This section is a placeholder and holds no results.** A separate ensemble of 3 is planned to be measured on `turbulent_radiative_layer_2D` from The Well. `results/exp_well.json` doesn't exist yet, so this card makes no claim about those models or that dataset. When it is filled in, it must say that the dataset is a published simulation benchmark and not physical measurement, and that this track tests doubt only, with no hand-off.
+
+**Dataset and credit.** `turbulent_radiative_layer_2D`, from The Well (Ohana et al., *The Well: a Large-Scale Collection of Diverse Physics Simulations for Machine Learning*, NeurIPS 2024, arXiv:2412.00568). The dataset card asks for this citation: Fielding et al., *Multiphase Gas and the Fractal Nature of Radiative Turbulent Mixing Layers*, The Astrophysical Journal Letters 894(2), L24, 2020, DOI 10.3847/2041-8213/ab8d2c. The data licence is CC-BY-4.0. Dataset link: https://huggingface.co/datasets/polymathic-ai/turbulent_radiative_layer_2D. Full entries are in `docs/REFERENCES.md`.
 
 | Item | Value |
 |---|---|

@@ -8,9 +8,9 @@ Lower is better for every score. A set score is the mean per-frame error over fr
 
 The main idea did not work. **Handing off to the solver when doubt was high did not beat a fixed schedule or a random one on any test set. On `test_b`, the set it was meant for, it was worse than the fixed schedule.**
 
-- Doubt does track error across scenes at a given time, moderately on `test_a` and `test_b` and more weakly on `test_c`. It does not rise on unseen shapes, and it falls on the low side of `test_c`.
+- Doubt does track error across scenes at a given time, moderately on `test_a` and `test_b` and more weakly on `test_c`. It does not rise on unseen shapes, and it falls on the low side of `test_c`. On `test_b` a divergence signal with no ensemble scored higher, 0.676 [0.537, 0.755] against 0.522 [0.286, 0.673]. Those intervals overlap, and no paired interval was saved.
 - The ensemble is about 13 to 17 times faster than the reference solver, with its full cost counted. It is more accurate than the coarse solver on `test_a` and, inside the primary window, on `test_b`. It is not more accurate on either side of `test_c`.
-- An oracle that knew the true error was no better than doubt on `test_a` and `test_b`. So the weak link is not only the doubt signal. A rule of "hand off when the current frame looks bad" is itself a poor way to spend solver time here.
+- An oracle that knew the true error was no better than doubt on `test_a` and `test_b`. So the weak link is not only the doubt signal. On `test_b` the oracle also trailed the fixed schedule, 0.2981 against 0.2652. One interpretation of those descriptive figures, not a tested finding, is that on `test_b` handing off when the current frame looks bad was a poor way to spend solver time. It doesn't carry to the other sets. On `test_a` the oracle is nominally ahead of fixed, 0.2446 against 0.2507. On the high side of `test_c` it scored 0.3959, lower than fixed (0.4112 and 0.4190), random (0.4179) and doubt (0.4100).
 - The reasons given below come from analysis after the fact, on the same test sets. They are suggestions, not findings that have been confirmed.
 - The public-dataset results do not exist yet. See "PUBLIC TRACK PENDING" at the end of this file.
 
@@ -72,7 +72,7 @@ Source: `exp_accuracy.json`.
 - **`test_b`:** the ensemble is ahead in the primary window, but the two intervals touch, at 0.343 to 0.345. No paired interval for this comparison was saved. At 100 frames the coarse solver is ahead on the mean, with overlapping intervals, and it has more usable frames. So the lead is real only over the shorter horizon that was fixed in advance.
 - **`test_c` low:** the coarse solver is clearly more accurate. The ensemble also makes too much smoke here, with a total smoke ratio of 1.226 against the reference in the primary window. These plumes reach obstacles late, and 1 of the 10 scenes has no contact by frame 70 on the coarse rule, so this side says more about an unfamiliar flow than about flow around obstacles.
 - **`test_c` high:** the ensemble's score is slightly worse, and the intervals overlap heavily. This isn't a win for either, and the coarse solver leads on the secondary measures in the table.
-- **Secondary measures aren't one-sided.** The coarse solver loses far more of the finest scales: in the highest spectrum band on `test_a`, its log-ratio is -1.299 and the ensemble's is -0.099. But it holds the plume top better there (-0.017 against 0.192) and its divergence is lower.
+- **Secondary measures aren't one-sided.** The coarse solver loses far more of the finest scales: in the highest spectrum band on `test_a`, its log-ratio is -1.299 and the ensemble's is -0.099. But it holds the plume top better there (-0.017 against 0.192) and its RMS divergence is lower (0.00132 against 0.00188). Its largest divergence is slightly higher (0.0433 against 0.0420).
 - **"For the same compute time" was not tested directly.** No coarse run was limited to 15 ms a frame, and the coarse solver here takes about 10 to 12 times as long as the ensemble. So on `test_a` and `test_b` the ensemble won with far less time than the hope required, and on `test_c` nothing shows who would win at equal time. A coarse solver with a looser pressure tolerance might be cheaper and only slightly less accurate. That was not tried.
 - **What these errors mean.** From about `t=1` the reference is one realisation of a chaotic flow, not pointwise truth (`PREREGISTRATION.md`). An error near the coarse solver's level doesn't by itself mean the prediction is physically wrong, and the coarse score is reported to give that level a figure.
 
@@ -89,7 +89,7 @@ Source: `exp_accuracy.json`.
 Source: `exp_accuracy.json`. The ensemble's time includes all 5 members. A single member takes 3.6 ms.
 
 - The reference time comes from only 3 scenes of 20 frames each, and it varies a lot between sets. Against the solver-only runs, which are longer and cover every scene, the ratio is about 13 to 15. So "about 14 times" is a fair single figure, and the table shows why it isn't exact.
-- The solver is this project's own PyTorch code with a tight pressure tolerance. It wasn't tuned for speed, and a tuned solver would narrow the gap. The ratio holds only for this solver on this laptop GPU.
+- The solver is this project's own PyTorch code with a tight pressure tolerance. It wasn't tuned for speed, and a tuned solver could narrow the gap, but none was measured. The ratio holds only for this solver on this laptop GPU.
 - Speed isn't free. The solver-only run scores 0.097 on `test_a` and 0.098 on `test_b`. The ensemble scores 0.256 and 0.308.
 - Hand-off gives speed back. The doubt policy took 82.9 ms on `test_a` and 67.1 ms on `test_b`, about 3 times faster than the reference. On the high side of `test_c` it took 257.7 ms, slower than the reference's 194.4 ms, and scored 0.410 where the solver-only run scored 0.278.
 - The demo ran in AI mode at 61.3 frames per second with all 5 members, against a target of 15 (`demo_bench.json`). No solver frames were included in that run.
@@ -376,22 +376,24 @@ Every number here is in `results/posthoc_analysis.json`, from `scripts/posthoc_a
 
 **Checks first.** The saved rollouts reproduce every reported set score. Across 1390 rollouts, the error before the first hand-off differs from the no-hand-off ensemble by exactly 0.0, so the ensemble is an exact comparison up to that point. The frozen policy's first hand-off is always the first frame over the threshold.
 
-**Main conclusion.** The hypothesis going in was that the solver can't bring a chaotic flow back, and that doubt fires too late to help. As worded, that is mostly not what the data shows. Its premise, that error rarely comes back, mostly holds. Its proposed cause of the `test_b` loss, late hand-offs, explains little. The largest supported cause is which scenes got the solver.
+**Main conclusion.** The first guess after seeing the results, before the post-hoc analysis, was that the solver can't bring a chaotic flow back, and that doubt fires too late to help. No record from before the results states this guess: it isn't in the preregistration or the design. As worded, that is mostly not what the data shows. Its premise, that error rarely comes back, mostly holds. Its proposed cause of the `test_b` loss, late hand-offs, explains little. The largest supported cause is which scenes got the solver.
 
 ### Explanations the data supports
 
 1. **Doubt concentrated solver time in a few scenes on `test_b`.** 19 of 30 scenes got no hand-off in frames 21 to 70, and the top 5 scenes took 75% of solver frames. 75% of the fixed schedule's gain came from those 19 scenes. Estimated with doubt's per-scene shares but even spacing, the gap to fixed is -0.0231 [-0.0416, -0.0048]. If shares above the largest schedule are extended in a straight line, it is -0.0154 [-0.0374, 0.0097], which includes zero. The actual gap in gain is -0.0229, so this accounts for roughly two-thirds to all of it. These are estimates from noisy single rollouts.
-2. **Doubt behaves mostly like a property of the scene, not a moment-by-moment alarm.** On rollouts with no hand-off, the chance of staying over the threshold is 0.98 to 0.99 on `test_a` and `test_b`, and the chance of crossing it from below is 0.01 to 0.016. About 90% of log-doubt variance, after removing time, is between scenes. Scene doubt tracks largest flow travel, with Spearman 0.86 on `test_a`, 0.86 on `test_b` and 0.83 on the high side of `test_c`, though not on the low side, at -0.079 [-0.765, 0.713] from 10 scenes. In the frozen rollouts, 74 to 76% of the gaps between hand-offs are immediately consecutive.
+2. **Doubt behaves mostly like a property of the scene, not a moment-by-moment alarm.** On rollouts with no hand-off, the chance of staying over the threshold is 0.98 to 0.99 on `test_a` and `test_b`, and the chance of crossing it from below is 0.01 to 0.016. After removing time, the share of log-doubt variance that is between scenes is about 90%, and 83% on the low side of `test_c`. Scene doubt tracks largest flow travel, with Spearman 0.86 on `test_a`, 0.86 on `test_b` and 0.83 on the high side of `test_c`, though not on the low side, at -0.079 [-0.765, 0.713] from 10 scenes. In the frozen rollouts, 74 to 76% of the gaps between hand-offs are immediately consecutive.
 3. **Restarting the solver has a real cost.** On the high side of `test_c`, the fixed schedule with 99% solver scored 0.411 and one continuous solver run scored 0.278. These are nearly the same solver frames, but the first is restarted from the coarse state every 2 frames. On `test_a`, a hand-off starting at frames 21 to 25 raises error by 0.010 [0.007, 0.013] on its second frame. On `test_a`, fixed at 40% share is nominally worse than no hand-off, -0.012 [-0.033, 0.011]. On validation at about 41% share, gain was 0.039 for 5-frame and 0.044 for 10-frame hand-offs. For 2-frame hand-offs it was 0.024 at 34% share and 0.014 at 43%. At 25% or below, length made little difference. The frozen choice was 2 frames, under the 25% cap the preregistration set.
 4. **Doubt's extra milliseconds per frame are a counting effect.** Saved milliseconds cover frames 21 to 120, but the budget covers only frames 21 to 70. On `test_b`, doubt's share over the full range is 21.6% against fixed's 14.3%, and on `test_a` 27.9% against 19.9%, because doubt keeps asking for the solver after frame 70. Counts predict 68.0 ms against the actual 67.1 on `test_b`. In runs that stop at frame 70, doubt takes 49.4 ms and fixed 49.5 ms on `test_b`, and 63.1 and 61.7 on `test_a`. So the "equal budget" was equal only inside the window.
 5. **On `test_c`, doubt's level separates the two sides, and one threshold fits neither.** On the low side the largest doubt is 0.009 against `tau` 0.0198, so no frame triggers. Yet that side could have used the solver: fixed schedules gain 0.016 to 0.079, hand-offs lowered error below the frame before in most events (67 to 100% by start bin), and the ensemble makes 23% too much smoke, which doubt doesn't flag. On the high side, 92.6% of frames are over `tau`, and 14 of 20 scenes are over it on every frame. Fixed at 66% scored 0.419 against the policy's 0.410 at 92%, so the extra share bought little.
 6. **The oracle lost on `test_b` mainly by acting too late, not by choosing the wrong scenes.** Its threshold (error above 0.596) gives a median first hand-off at frame 55.5, a mean start at frame 61, and 97.7% consecutive hand-offs. Even spacing at the oracle's scene shares would gain 0.040 to 0.042. It actually gained 0.010, a gap of -0.030 [-0.050, -0.013]. Scenes the oracle picked gain more under the fixed schedule, by 0.033 [0.009, 0.058]. So knowing true error does identify where the solver helps, but a threshold on error uses that too late.
 
-### Explanations the data refutes
+### Explanations the data doesn't support
+
+These are exploratory and uncorrected, on the same test sets, so they aren't refuted, only unsupported here.
 
 1. **"Late bunching explains the `test_b` loss."** Doubt's hand-offs are later, with mean start frame 53.0 against 45.5, and only 30 of 208 solver frames fall in frames 21 to 40, against 84 of 213 for fixed. But start times alone predict a difference of +0.0013 [-0.0059, 0.0076], against the actual -0.0229. The same-scene slope on `test_b` gives about -0.0036 for that shift, a small part of the gap.
 2. **"Early hand-offs are better," as a general rule.** The same-scene slope per 10 frames later changes direction between sets. On `test_a` it is +0.0069 [0.0026, 0.013], so later is better. On `test_b` it is -0.0048 [-0.0093, -0.0007], so earlier is mildly better. On the low side of `test_c` it is -0.0078 [-0.0268, -0.0004], from only 10 scenes. On the high side it is -0.0184 [-0.039, 0.0015], which includes zero. The earliest hand-offs are the least useful on `test_a` and `test_b`.
-3. **"Chaos erases the benefit."** The gain persists. On `test_b`, hand-offs starting at frames 31 to 40 still show -0.030 [-0.048, -0.016] ten frames later, with no fading inside the window.
+3. **"Chaos erases the benefit inside the window."** The gain persists. On `test_b`, hand-offs starting at frames 31 to 40 still show -0.030 [-0.048, -0.016] ten frames later, with no fading inside the window. This says nothing about whether chaos is why error stays after a hand-off, which is under "What this can't settle".
 
 ### Partly supported
 
@@ -400,10 +402,10 @@ Every number here is in `results/posthoc_analysis.json`, from `scripts/posthoc_a
 
 ### What this can't settle
 
-- **Chaos as the cause.** Saved rollouts can't separate chaos from an existing error simply being carried forward.
+- **Chaos as a cause of error staying after a hand-off.** Saved rollouts can't separate chaos from an existing error simply being carried forward. They show only that the gain doesn't fade inside the window.
 - **Consecutive hand-offs.** The coefficients in random runs can't be told apart from zero on `test_a`, `test_b` or the high side of `test_c`, so nothing shows that bursts are wasteful in themselves. Random runs have few such pairs.
 - **Whether a better rule would beat fixed,** such as a per-scene budget or a threshold scaled to the flow. That needs new rollouts on validation, and new test scenes to check them on.
-- **Whether doubt's frame choice helps within a scene.** Against nearby frames in the same scene it gains almost nothing: -0.005 [-0.012, 0.000] on `test_a` and 0.000 on `test_b`, at lag 1 only. Within a start bin, higher doubt does go with larger reductions (Spearman mostly -0.1 to -0.56, no intervals). Scene mean doubt doesn't predict scene gain, at 0.087 [-0.255, 0.436] on `test_b`.
+- **Whether doubt's frame choice helps within a scene.** Against nearby frames in the same scene, at lag 1 only, the gain is small. On `test_a` it is -0.0052 [-0.0119, -0.0003] over 19 scenes, so the interval lies wholly below zero, a small nominal gain for doubt with no correction for the comparisons tried. On `test_b` it is -0.0003 [-0.0014, 0.0008] over 14 scenes. Within a start bin, higher doubt does go with larger reductions (Spearman mostly -0.1 to -0.56, no intervals). Scene mean doubt doesn't predict scene gain, at 0.087 [-0.255, 0.436] on `test_b`.
 - **`test_a`.** Doubt's gain of 0.0115 [0.005, 0.018] is above zero and fixed's 0.0055 [-0.007, 0.020] is not, but the paired difference includes zero. This is not a win.
 - **Whether doubt's skipped scenes gain more than its chosen scenes** under fixed: 0.022 [-0.003, 0.046] on `test_b`.
 - **How much of the 0.0229 is one schedule's luck,** as stated under the third hope.
@@ -446,7 +448,7 @@ To be filled in from `results/exp_well.json` when it exists, with no figure type
 
 | Item | Value |
 |---|---|
-| Dataset | `turbulent_radiative_layer_2D` from The Well, a published simulation benchmark. It isn't physical measurement |
+| Dataset | `turbulent_radiative_layer_2D` from The Well (Ohana et al.; Fielding et al. 2020), a published simulation benchmark. It isn't physical measurement |
 | Ensemble | 3 members |
 | Within-time Spearman, doubt, with interval | PENDING |
 | Within-time AUROC | PENDING |
@@ -455,3 +457,5 @@ To be filled in from `results/exp_well.json` when it exists, with no figure type
 | Did doubt predict error on this dataset? | PENDING |
 
 This track tests doubt only. It has no solver, so it can't say anything about hand-off.
+
+**Dataset and credit.** `turbulent_radiative_layer_2D`, from The Well (Ohana et al., *The Well: a Large-Scale Collection of Diverse Physics Simulations for Machine Learning*, NeurIPS 2024, arXiv:2412.00568). The dataset card asks for this citation: Fielding et al., *Multiphase Gas and the Fractal Nature of Radiative Turbulent Mixing Layers*, The Astrophysical Journal Letters 894(2), L24, 2020, DOI 10.3847/2041-8213/ab8d2c. The data licence is CC-BY-4.0. Dataset link: https://huggingface.co/datasets/polymathic-ai/turbulent_radiative_layer_2D. Full entries are in `docs/REFERENCES.md`.

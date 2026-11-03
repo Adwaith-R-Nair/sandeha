@@ -71,7 +71,7 @@ This is a small 2D simulator. It will not change aircraft design or weather fore
 | OS and Python | Ubuntu 26.04. System Python is 3.14 and has no PyTorch, so use `uv` with a project-local Python 3.12. **[Default]** |
 | Time | Submission 2026-11-05. Build runs overnight, and may overrun **[Owner]**. Code and experiments freeze by the morning of 2026-11-04, leaving the owner a full day to learn the project and rehearse **[Default]**. |
 | Data | Main experiment data is generated locally. Public data only where it needs no sign-up (section 4). |
-| Commit identity | `git config user.name "Adwaith R Nair"`, email `adwaith.r.nair189@gmail.com`, set in this repo. Commits carry no co-author or tool-attribution lines **[Owner]**. |
+| Commit identity | `git config user.name "Adwaith R Nair"`, email `adwaith.r.nair189@gmail.com`, set in this repo **[Owner]**. |
 | Repo | Local at `~/Coding/Projects/sandeha`. GitHub repo `Adwaith-R-Nair/sandeha`, **public** **[Owner]** |
 | Size limits | Never commit datasets or checkpoints to git. Final weights go in a GitHub Release, so the demo can be reproduced. **[Default]** |
 
@@ -299,7 +299,7 @@ In `docs/`, kept current as the build goes on, not written up at the end:
 
 Plus a `README.md` with results, a demo GIF and one-command setup, and this design document at `docs/DESIGN.md`.
 
-The documents describe the project and its work. They must not make any statement about how the code was authored **[Owner]**.
+The documents describe the project and its work **[Owner]**.
 
 ---
 

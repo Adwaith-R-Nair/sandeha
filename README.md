@@ -1,6 +1,6 @@
 # Sandeha
 
-Sandeha (Sanskrit for "doubt") is a neural 2D smoke simulator built to test one idea: run five networks, treat their disagreement as doubt, and call a conventional physics solver when doubt is high. **The idea did not work as hoped.** With the rules fixed in advance and the threshold frozen on validation, handing off by doubt did not beat a fixed or random schedule at the same solver budget on any test set. On unseen shapes it was worse than the fixed schedule, scoring 0.2881 against 0.2652, where lower is better. Other parts held. Doubt does track error at a given rollout time. The ensemble is about 13 to 17 times faster than this project's own reference solver, with all five members counted. It is more accurate than the coarse solver on familiar scenes and, inside the primary window, on unseen shapes, but not on either side of the out-of-range set. This is a small project on generated 2D data, and it claims no new science.
+Sandeha (Sanskrit for "doubt") is a neural 2D smoke simulator built to test one idea: run five networks, treat their disagreement as doubt, and call a conventional physics solver when doubt is high. **The idea did not work as hoped.** With the rules fixed in advance and the threshold frozen on validation, handing off by doubt did not beat a fixed or random schedule at the same solver budget on any test set. On unseen shapes it was worse than the fixed schedule, scoring 0.2881 against 0.2652, where lower is better. An oracle that hands off using the true error was no better than doubt on familiar scenes or unseen shapes. Other parts held, with limits. Doubt does track error at a given rollout time, but on unseen shapes a divergence signal with no ensemble scored higher, 0.676 [0.537, 0.755] against 0.522 [0.286, 0.673]. Those intervals overlap, and no paired interval was saved. The ensemble is about 13 to 17 times faster than this project's own reference solver, with all five members counted. It is more accurate than the coarse solver on familiar scenes and, inside the primary window, on unseen shapes, but not on either side of the out-of-range set. This is a small project on generated 2D data, and it claims no new science.
 
 ![The demo running the trained ensemble, with smoke on the left and doubt on the right](docs/assets/sandeha-demo.gif)
 
@@ -8,7 +8,9 @@ The recording is of the real system, running live. The demo is not evidence for 
 
 ## Run the demo
 
-You need [uv](https://docs.astral.sh/uv/) and an NVIDIA GPU with a driver that supports CUDA 13.2. This one command installs the project, downloads the trained weights and starts the demo:
+**Not available yet from a fresh clone.** Release `v1.0` hasn't been published, so the download in the command below fails today with HTTP 404. The clean-clone check hasn't been run either.
+
+You need [uv](https://docs.astral.sh/uv/) and an NVIDIA GPU with a driver that supports CUDA 13.2. Once the release is published, this one command is meant to install the project, download the trained weights and start the demo:
 
 ```bash
 uv sync && curl -fL https://github.com/Adwaith-R-Nair/sandeha/releases/download/v1.0/sandeha-weights.tar.gz | tar xz && uv run python scripts/run_demo.py
@@ -16,7 +18,7 @@ uv sync && curl -fL https://github.com/Adwaith-R-Nair/sandeha/releases/download/
 
 Then open `http://127.0.0.1:8000`. It needs no internet once the download has finished.
 
-The weights aren't in git. They come from release `v1.0`, in the file `sandeha-weights.tar.gz`, which unpacks at the repo root. On start-up the demo checks each checkpoint against its SHA-256 in `results/ensemble.json`, and refuses to run on a mismatch.
+The weights aren't in git. They are to be published as release `v1.0`, in the file `sandeha-weights.tar.gz`, which unpacks at the repo root. On start-up the demo checks each checkpoint against its SHA-256 in `results/ensemble.json`, and refuses to run on a mismatch.
 
 Useful options for `scripts/run_demo.py`: `--device cpu` runs slowly on purpose, `--members 3` uses fewer members and shows that on the page, and `--port 8001` picks another port. `--random-weights` needs no download, and the page then says that the models are untrained and that nothing shown is a result.
 
@@ -60,7 +62,7 @@ Source: `results/exp_handoff.json`.
 
 Source: `results/exp_accuracy.json`. Bold marks the better of ensemble and coarse where the intervals don't clearly overlap. On `test_b` the two intervals touch, and at 100 frames the coarse solver is ahead.
 
-- The reference timings give about 13 to 17 times faster. Against the longer solver-only runs it is about 13 to 15 times, so "about 14 times" is a fair single figure. The solver is this project's own PyTorch code, not tuned for speed, on one laptop GPU. A tuned solver would narrow the gap.
+- The reference timings give about 13 to 17 times faster. Against the longer solver-only runs it is about 13 to 15 times, so "about 14 times" is a fair single figure. The solver is this project's own PyTorch code, not tuned for speed, on one laptop GPU. A tuned solver could narrow the gap, but none was measured.
 - Speed isn't free. Running the solver only scores 0.097 on `test_a` and 0.098 on `test_b`, far below the ensemble's error.
 - Hand-off gives much of the speed back: 67.1 ms per frame on `test_b` under doubt. On the high side of `test_c` it took 257.7 ms, slower than the reference, and scored 0.410 where a continuous solver run scored 0.278.
 - The demo ran in AI mode at 61.3 frames per second with all 5 members, against a target of 15 (`results/demo_bench.json`).
@@ -83,13 +85,15 @@ Source: `results/exp_doubt.json`. The divergence of one network's output scored 
 **This analysis is exploratory and wasn't preregistered.** It comes from the same test sets that showed the results, its intervals aren't corrected for the number of comparisons tried, and confirming it needs new data. It's in `results/posthoc_analysis.json`.
 
 - The largest supported cause of the `test_b` loss is which scenes got the solver. 19 of 30 scenes got no hand-off in frames 21 to 70, and the top 5 scenes took 75% of solver frames.
-- Doubt behaves mostly like a property of the scene, not a moment-by-moment alarm. About 90% of log-doubt variance, after removing time, is between scenes.
-- Late hand-offs, the reason expected going in, explain little of the loss.
+- Doubt behaves mostly like a property of the scene, not a moment-by-moment alarm. After removing time, the share of log-doubt variance that is between scenes is about 90%, and 83% on the low side of `test_c`.
+- Late hand-offs, the first guess after seeing the results and before the post-hoc analysis, explain little of the loss.
 - Restarting the solver has a real cost. On the high side of `test_c`, a fixed schedule at 99% solver scored 0.411, while one continuous solver run scored 0.278.
 
 ## PUBLIC TRACK PENDING
 
-**This section holds no results.** `results/exp_well.json` doesn't exist yet, so nothing above says anything about the public dataset. The track will measure doubt, with 3 members, on `turbulent_radiative_layer_2D` from The Well. That is a published simulation benchmark, not physical measurement. It has no hand-off, because the project has no solver for that physics. This section gets filled in from that file once it exists.
+**This section holds no results.** `results/exp_well.json` doesn't exist yet, so nothing above says anything about the public dataset. The track will measure doubt, with 3 members, on a published simulation benchmark, not physical measurement. It has no hand-off, because the project has no solver for that physics. This section gets filled in from that file once it exists.
+
+**Dataset and credit.** `turbulent_radiative_layer_2D`, from The Well (Ohana et al., *The Well: a Large-Scale Collection of Diverse Physics Simulations for Machine Learning*, NeurIPS 2024, arXiv:2412.00568). The dataset card asks for this citation: Fielding et al., *Multiphase Gas and the Fractal Nature of Radiative Turbulent Mixing Layers*, The Astrophysical Journal Letters 894(2), L24, 2020, DOI 10.3847/2041-8213/ab8d2c. The data licence is CC-BY-4.0. Dataset link: https://huggingface.co/datasets/polymathic-ai/turbulent_radiative_layer_2D. Full entries are in `docs/REFERENCES.md`.
 
 ## Repo map
 

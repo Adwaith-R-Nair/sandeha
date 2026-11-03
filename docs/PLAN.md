@@ -20,8 +20,7 @@
 
 ## Global Constraints
 
-- Git author `Adwaith R Nair`, email `adwaith.r.nair189@gmail.com`, set in repo config. Commit messages are short and accurate, use conventional types (`feat:`, `fix:`, `docs:`, `test:`, `refactor:`, `perf:`, `build:`, `ci:`, `chore:`, `style:`), have a subject of 72 characters or fewer, and carry no co-author or tool-attribution lines. A `commit-msg` hook enforces this.
-- Docs state nothing about how the code was authored. Tooling config directories and files stay untracked.
+- Git author `Adwaith R Nair`, email `adwaith.r.nair189@gmail.com`, set in repo config. Commit messages are short and accurate, use conventional types (`feat:`, `fix:`, `docs:`, `test:`, `refactor:`, `perf:`, `build:`, `ci:`, `chore:`, `style:`), and have a subject of 72 characters or fewer. A `commit-msg` hook enforces this.
 - GitHub repo `Adwaith-R-Nair/sandeha`, public. Push at the end of every phase.
 - Never commit datasets or checkpoints. Weights go in a GitHub Release.
 - GPU memory 6 GB. Reference grid 256×256, AI grid 128×128, AI step 4 reference solver steps, ensemble of 5, public-track ensemble of 3.
@@ -86,8 +85,8 @@ docs/                    DESIGN PLAN PRD HLD LLD BUILD_LOG DECISIONS TEST_PLAN R
 
 **Produces:** an installed `sandeha` package, a `uv run pytest` command, and the long-job wrapper.
 
-- [ ] `git init -b main`. Set `user.name` and `user.email`. Install the `commit-msg` hook that rejects `Co-Authored-By` and tool attribution.
-- [ ] `.gitignore`: `/data/ /runs/ /checkpoints/ .venv/ __pycache__/`, anchored to the root so `src/sandeha/data/` stays tracked. Local tooling paths go in `.git/info/exclude`.
+- [ ] `git init -b main`. Set `user.name` and `user.email`. Install the `commit-msg` hook that checks commit messages.
+- [ ] `.gitignore`: `/data/ /runs/ /checkpoints/ .venv/ __pycache__/`, anchored to the root so `src/sandeha/data/` stays tracked.
 - [ ] `uv` project on Python 3.12, with PyTorch's CUDA build matching driver 595.
 - [ ] Write `tests/test_env.py::test_cuda_runs_a_matmul`: on `cuda`, multiply two 1024×1024 matrices and assert the result is finite. Run it and see it pass.
 - [ ] `scripts/long_job.sh <name> <cmd...>`: exit 3 with a message if mains power is offline, otherwise run under `systemd-inhibit --what=sleep:idle:handle-lid-switch` and log to `runs/<name>.log` and `runs/jobs.log`.
@@ -377,5 +376,5 @@ Smoke and doubt side by side at equal size, with a very clear AI or PHYSICS indi
 - [ ] Write `REPORT.md`, with standard structure: abstract, intro, related work, methods, experiments, results, discussion, limits, conclusion, references.
 - [ ] README: pitch, GIF, results, one-command setup and demo.
 - [ ] From a clean clone in a temp directory: install, download Release weights, run tests, start the demo. Fix what fails.
-- [ ] Audit: `git log --format='%an <%ae>%n%B'` has only the owner's identity and no attribution lines. A grep of tracked files finds no mention of the tooling used. Each number in `REPORT.md` and `README.md` appears in `results/`.
+- [ ] Audit: `git log --format='%an <%ae>'` has only the owner's identity. Each number in `REPORT.md` and `README.md` appears in `results/`.
 - [ ] Upload weights to a GitHub Release. Commit and push. The README's demo command expects release `v1.0`, file `sandeha-weights.tar.gz`, unpacked at the repo root.

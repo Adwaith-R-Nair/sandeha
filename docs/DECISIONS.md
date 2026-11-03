@@ -36,23 +36,23 @@ Each major decision, the alternatives and the reason. Status is **Default** for 
 - **Alternative:** the plan's unanchored patterns.
 - **Reason:** an unanchored `data/` matches any directory of that name. `git check-ignore` confirmed that it ignores `src/sandeha/data/store.py`, which would have silently left the data package out of the repo. `tests/test_repo.py` guards against this.
 
-### B3: Local tooling paths excluded outside tracked files (2026-11-02). Changes the plan
+### B3: Machine-local paths excluded outside tracked files (2026-11-02). Changes the plan
 
-- **Decision:** local tooling paths are listed in `.git/info/exclude`, not in `.gitignore`. `docs/PLAN.md` is updated to match. A fresh clone needs the same local entries added if those tools are used there.
+- **Decision:** machine-local paths are listed in `.git/info/exclude`, not in `.gitignore`. `docs/PLAN.md` is updated to match. A fresh clone needs its own local entries.
 - **Alternative:** the plan's `.gitignore` entries.
-- **Reason:** `.gitignore` is tracked, and tracked files must not name tooling.
+- **Reason:** `.gitignore` is tracked, and these paths matter on one machine only.
 
 ### B4: `commit-msg` hook kept in `.git/hooks/` only (2026-11-02)
 
 - **Decision:** the hook is installed locally and is not tracked.
 - **Alternative:** a tracked copy under `scripts/`.
-- **Reason:** the rejected patterns name specific tools, so a tracked copy would break the same rule as B3. The cost is that a fresh clone has no hook until one is installed. The audit in Task 13 checks the log directly, so that check does not depend on the hook.
+- **Reason:** it is a local check on commit messages, and nothing in the project runs it. The cost is that a fresh clone has no hook until one is installed.
 
 ### B5: Section 8 of `docs/DESIGN.md` reworded (2026-11-02). Changes the design text
 
-- **Decision:** four lines describing how the build is run were reworded before the first commit: the build approach line, the phase check rule, the results rule and the interruption rule. Requirements are unchanged: each phase still gets an independent check, results still come from the runs, and the build log must still allow a restart.
+- **Decision:** four lines on running the build were reworded before the first commit: the build approach line, the phase check rule, the results rule and the interruption rule. Requirements are unchanged: each phase still gets an independent check, results still come from the runs, and the build log must still allow a restart.
 - **Alternative:** keep the design untracked.
-- **Reason:** the design itself requires that documents make no statement about how the code was authored, and it is a tracked deliverable.
+- **Reason:** the design is a tracked deliverable, and those lines described process, not the project.
 
 ### B6: Wrapper refuses when mains state is unknown (2026-11-02)
 
@@ -71,11 +71,11 @@ Each major decision, the alternatives and the reason. Status is **Default** for 
 - **Alternatives:** document that the job survives a signal to the wrapper, and that signal deaths log as exit 1.
 - **Reason:** with the first version, the job kept running after SIGTERM to the wrapper, with no `END` line, so it looked dead. Restarting on that reading could put two jobs on the same checkpoints and GPU, against the design's "safe to restart" rule. An out-of-memory kill also logged the same code as an ordinary failure. The cost is about 25 more lines of shell. SIGKILL cannot be forwarded, so that case is documented with a check to run before restarting.
 
-### B9: Wider attribution patterns in the local `commit-msg` hook (2026-11-02)
+### B9: Wider patterns in the local `commit-msg` hook (2026-11-02)
 
-- **Decision:** the hook also rejects "assisted by" and "assisted with" phrasing and more tool names.
+- **Decision:** the hook's rejection patterns were widened.
 - **Alternative:** keep the first pattern list.
-- **Reason:** a message of the form "Assisted by" plus a tool name not on the list exited 0. One tool name is matched only through such phrasing, because it is also an ordinary word for a demo feature. Under B4, the hook stays untracked.
+- **Reason:** a sample message the hook was meant to refuse exited 0. Under B4, the hook stays untracked.
 
 ### B10: Semi-Lagrangian advection, with MacCormack rejected (2026-11-03)
 
@@ -417,7 +417,7 @@ Each major decision, the alternatives and the reason. Status is **Default** for 
 ### B58: The final run's commit stamp differs from the recorded commit, and the code doesn't (2026-11-04)
 
 - **Decision:** `PREREGISTRATION.md` names `3a16f42` as the code commit, and the results are stamped `31f57dc`. This stays as it is, and is stated here and in `RESULTS.md`.
-- **Alternatives:** editing the preregistration after the run, which would rewrite the record.
+- **Alternatives:** changing the preregistration's rules or its named commit after the run, which would rewrite the record. A dated note was added after the run, in `6b547aa`. It marks a stale row and states this stamp difference, and it changes no rule or commit.
 - **Reason:** `31f57dc` is the commit that recorded `3a16f42`. It changes only `docs/BUILD_LOG.md`, `docs/PREREGISTRATION.md` and `results/val_rehearsal/`, none of them code, and the run started from it on a clean tree (`git_dirty` false in every `exp_*.json`). No test split opened between the two.
 
 ### B59: Post-hoc work is kept apart and labelled (2026-11-04)

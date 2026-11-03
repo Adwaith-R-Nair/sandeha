@@ -17,7 +17,7 @@ A dated record of what happened in each phase, including failures and changed de
 
 ### What was done
 
-- Git repo, identity in repo config, and a local `commit-msg` hook. The hook was tried on sample messages: plain messages exit 0, and messages with a co-author trailer or tool attribution exit 1.
+- Git repo, identity in repo config, and a local `commit-msg` hook. The hook was tried on sample messages: plain messages exit 0, and messages that break its rules exit 1.
 - `uv` project on Python 3.12, with the `sandeha` package installed from `src/`.
 - `scripts/long_job.sh`, and tests for it.
 - `PRD`, `HLD` (with diagram), `LLD`, `TEST_PLAN`, `DECISIONS` and this log.
@@ -41,7 +41,7 @@ Not exercised: the exit 3 path against a real unplugged adapter. It is covered o
 
 ### Changed decisions
 
-See `DECISIONS.md`: B2 (anchored `.gitignore`), B3 (local tooling excludes), B5 (reworded design text) and B6 (unknown mains state refuses).
+See `DECISIONS.md`: B2 (anchored `.gitignore`), B3 (local excludes), B5 (reworded design text) and B6 (unknown mains state refuses).
 
 ### Problems
 
@@ -62,7 +62,7 @@ An independent review of Task 1 raised the items below. Each wrapper and hook it
 | Job killed by a signal logged as `exit=1` | Yes: `bash terminated by signal TERM`, wrapper exit 1 | Real status recorded: 143 for SIGTERM, 137 for SIGKILL (B8) |
 | Name `jobs` wrote job output into `runs/jobs.log` | Yes: `collide` appeared between `START` and `END` | Name reserved, exit 2 |
 | SIGTERM to the wrapper left the job running with no `END` line | Yes: the job's marker file appeared after the wrapper exited | Signal forwarded to the job's process group (B8) |
-| Hook accepted "Assisted by" plus an unlisted tool name | Yes: exit 0 | Pattern widened (B9). Attribution samples exit 1. Messages with a conventional subject and no attribution, including one about a brush cursor, exit 0. Subject rules were added to the hook separately by `532ac37`, and earlier commits are not rewritten |
+| Hook accepted a sample message it was meant to refuse | Yes: exit 0 | Pattern widened (B9). Refused samples exit 1. Messages with a conventional subject that break no rule exit 0. Subject rules were added to the hook separately by `532ac37`, and earlier commits are not rewritten |
 | `docs/DESIGN.md` status line out of date | Fixed by the owner in `8fb4453` before this work reached it | None |
 | GitHub repo missing and no push | Was true when the review ran. The repo was created under the owner's account and `main` pushed at 18:27 to 18:28 UTC, as public | `DECISIONS.md` D12 updated to match. This entry's commit is pushed with a plain `git push origin main`, closing Phase 1 |
 
@@ -900,7 +900,7 @@ The demo benchmark then ran with the trained ensemble: 61.3 frames per second wi
 
 Added `scripts/posthoc_analysis.py`, `results/posthoc_analysis.json` and 5 `posthoc_*` figures in `8391e14`. This is exploratory and wasn't preregistered (B59). It ran no new rollouts, opened no test split and used no GPU.
 
-The saved rollouts reproduce every reported set score. The largest supported reason for the `test_b` loss is which scenes got the solver: 19 of 30 got no hand-off in the window. Late hand-offs, the reason expected going in, explain little. It stays unconfirmed, since it comes from the same test sets.
+The saved rollouts reproduce every reported set score. The largest supported reason for the `test_b` loss is which scenes got the solver: 19 of 30 got no hand-off in the window. Late hand-offs, the first guess after seeing the results and before the post-hoc analysis, explain little. It stays unconfirmed, since it comes from the same test sets.
 
 ## 2026-11-04: Written results and model card
 
@@ -933,3 +933,19 @@ Rewrote `README.md` around the measured results, with the demo GIF, results tabl
 - **Publish release `v1.0`.** It wasn't published when this was written, so the README's demo command can't work until it is. The demo needs `runs/ensemble/seed_*/best.pt` and `data/normalizer.json` from the archive, at those paths.
 - **Fill in the PUBLIC TRACK PENDING sections** in `README.md`, `docs/VIVA_GUIDE.md` and `docs/PRD.md` as well as `RESULTS.md` and `MODEL_CARD.md`, once `results/exp_well.json` exists.
 - **Stale text outside this task:** the status line in `HLD.md` says no experiment has run, and `REPORT.md` isn't written. The README's document list needs a link once it is.
+
+## 2026-11-04: Corrections after an audit of the documents
+
+Checked each item against `results/` and git history, then corrected the wording in `README.md`, `docs/RESULTS.md`, `docs/VIVA_GUIDE.md`, `docs/MODEL_CARD.md`, `docs/DECISIONS.md` B58 and this log. No result file changed, and nothing was rerun.
+
+- **Overstated or wrong:** the oracle reading is now limited to `test_b` and marked as interpretation. "Refutes" became "doesn't support", and the two chaos statements now agree. `gains almost nothing` now gives -0.0052 [-0.0119, -0.0003]. The solver-only score is no longer offered as proof that the solver is correct. The 0.103 figure is named as a chance, not a doubt value. "Would narrow the gap" became "could". The variance share now says 83% on the low side of `test_c`. The divergence comparison now separates RMS from largest.
+- **Late hand-offs:** this was the first guess after seeing the results, not an expectation from before them. The wording first appears in `6e98cb2`, after the final run.
+- **Preregistration record:** the viva guide now discloses `31f57dc` and `6b547aa`, and B58 records the dated note.
+- **Summaries:** they now state the `test_b` divergence result and the oracle result.
+- **Public track:** those sections now cite both papers, the licence and the dataset link.
+- **Demo:** the README and viva guide now say that release `v1.0` isn't published, so the command fails today with HTTP 404.
+
+### Open items
+
+- `REPORT.md` still isn't written, and release `v1.0` still isn't published.
+- `PREREGISTRATION.md`'s opening line says that the file's commits come before the data manifest and the model code. That holds for 4 of its 6 commits. It wasn't edited, to avoid another change after the run. The viva guide states the full history.
