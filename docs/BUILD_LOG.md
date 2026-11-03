@@ -835,3 +835,12 @@ Download, which leaves out the notebook, so nothing in the download can be run:
 ## 2026-11-03: Fix the public track's download command
 
 The documented command passed `"stats.yaml"` after `--include`. huggingface-hub 2.4.0 takes one value per flag, so it read that as a filename, ignored `--include`, and fetched no HDF5 files. The command now has `--include "data/*"` alone, since the code never reads `stats.yaml`. `tests/well/test_well_download.py` runs the documented command through the real CLI with the hub calls mocked. It failed before the fix and passes after. No real download has been run.
+
+## 2026-11-03: Phase 5, Task 8 code (hybrid simulator, policies, hand-off selection)
+
+Built `src/sandeha/hybrid.py`, `src/sandeha/handoff_selection.py` and `scripts/select_handoff.py`. Decision is B52. Tested on CPU with stub members, small randomly initialised U-Nets and a tiny solved split, with no trained model and no real split opened: `tests/test_hybrid.py`, `tests/test_handoff_selection.py` and `tests/test_ensemble.py` gave 76 passed. The full test suite wasn't rerun.
+
+### Open items
+
+- **`results/handoff_selection.json` doesn't exist yet.** After the ensemble is trained, run `scripts/long_job.sh select_handoff uv run python scripts/select_handoff.py`, then commit the file before any test split opens.
+- **Selection time isn't measured.** Its log gives each rollout set's seconds, and Task 9 must judge the total against the evaluation budget.
