@@ -82,6 +82,19 @@ def git_state() -> tuple[str, bool]:
     return git("rev-parse", "HEAD"), bool(git("status", "--porcelain"))
 
 
+def travel_cells(mac: tuple[torch.Tensor, torch.Tensor], dt: float, res: int) -> torch.Tensor:
+    """Each item's largest distance moved in one step, in cells, shape ``(B,)``.
+
+    A wall's thickness is a distance in any direction, so both components count together. Taking
+    each cell's fastest faces gives an upper bound, where averaging them to the centre could read
+    low at a sharp spike, and a scene near the wall should be named rather than missed.
+    """
+    u, v = mac
+    sideways = torch.maximum(u[..., :-1].abs(), u[..., 1:].abs())
+    upwards = torch.maximum(v[..., :-1, :].abs(), v[..., 1:, :].abs())
+    return (sideways.square() + upwards.square()).sqrt().amax(dim=(1, 2, 3)) * dt * res
+
+
 def _simulate_batch(config: dict, batch: list, device: torch.device) -> dict:
     """Run scenes together, and return per-scene arrays of what is to be stored."""
     res, factor = config["res"], config["res"] // config["coarse_res"]
@@ -167,9 +180,7 @@ def _simulate_batch(config: dict, batch: list, device: torch.device) -> dict:
             stats["item_steps"] += 1
             stats["max_cg_iterations"] = torch.maximum(stats["max_cg_iterations"], report.iterations)
             stats["max_divergence"] = torch.maximum(stats["max_divergence"], report.residual)
-            u, v = state.mac
-            fastest = torch.maximum(u.abs().amax(dim=(1, 2, 3)), v.abs().amax(dim=(1, 2, 3)))
-            travel = fastest * config["dt"] * res
+            travel = travel_cells(state.mac, config["dt"], res)
             furthest = travel > stats["max_travel_cells_per_step"]
             stats["max_travel_frame"][furthest] = frame
             stats["max_travel_cells_per_step"][furthest] = travel[furthest]

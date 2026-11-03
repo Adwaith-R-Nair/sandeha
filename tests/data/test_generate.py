@@ -15,7 +15,7 @@ import torch.nn.functional as F
 import yaml
 
 from sandeha.data import generate as generate_module
-from sandeha.data.generate import GenerationError, generate, load_config, scene_seed
+from sandeha.data.generate import GenerationError, generate, load_config, scene_seed, travel_cells
 from sandeha.data.store import open_split, sha256_file
 from sandeha.physics import scenes
 from sandeha.physics.scenes import SPLITS, sample_scene
@@ -358,7 +358,10 @@ def test_fields_match_a_direct_solver_run(tmp_path, monkeypatch):
         for _ in range(4):
             state = solver.step(state, solid, inflow, lift)
             u, v = state.mac
-            travel.append((max(u.abs().max().item(), v.abs().max().item()) * 0.01 * 64, frame - 1))
+            sideways = torch.maximum(u[..., :-1].abs(), u[..., 1:].abs())
+            upwards = torch.maximum(v[..., :-1, :].abs(), v[..., 1:, :].abs())
+            speed = (sideways**2 + upwards**2).sqrt().max().item()
+            travel.append((speed * 0.01 * 64, frame - 1))
         assert np.array_equal(np.asarray(store.fields[1, frame]), stored_view(state, solid)), frame
 
     stats = manifest_of(root)["splits"]["train"]["stats"]
@@ -433,6 +436,23 @@ def test_manifest_records_solver_health(tiny_root):
     assert 0 < stats["max_travel_cells_per_step"] < 64
     assert stats["max_cg_iterations"] > 0
     assert stats["max_divergence"] > 0
+
+
+def test_travel_is_a_distance_across_both_directions():
+    """A wall's thickness is a distance, so a diagonal flow has to count both components."""
+    u, v = torch.zeros(2, 1, 8, 9), torch.zeros(2, 1, 9, 8)
+    u[0], v[0] = 3.0, 4.0  # A uniform diagonal flow.
+    u[1, 0, 2, 3] = -6.0  # One face in cells (2, 2) and (2, 3).
+    v[1, 0, 3, 3] = 8.0  # One face in cells (2, 3) and (3, 3).
+    assert travel_cells((u, v), dt=0.01, res=8).tolist() == pytest.approx([0.4, 0.8])
+
+
+def test_travel_counts_only_the_faces_of_one_cell():
+    """The fastest faces of two far-apart cells don't add up."""
+    u, v = torch.zeros(1, 1, 8, 9), torch.zeros(1, 1, 9, 8)
+    u[0, 0, 0, 0] = 3.0
+    v[0, 0, 8, 7] = 4.0
+    assert travel_cells((u, v), dt=0.01, res=8).tolist() == pytest.approx([0.32])
 
 
 def test_manifest_records_each_scene_s_travel(tiny_root):

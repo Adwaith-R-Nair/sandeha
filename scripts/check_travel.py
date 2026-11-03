@@ -1,107 +1,50 @@
-"""Measure travel per step, on ordinary late-obstacle train scenes, and how a step size changes it.
+"""Check travel per step against the thinnest wall, and how a step size changes the flow.
 
-A late obstacle can throw up a one-off spike in speed. Each scene's largest travel is compared with
-the thinnest wall. Then the largest-travel scene and low-travel controls are each restarted from
-the frame of their largest travel, at the data's step size and at half of it, and their density is
-compared over the next frames. Starting both from one state leaves out the chaotic difference that
-builds up over a whole run. ``docs/PREREGISTRATION.md`` uses that figure for scenes above the wall.
+Three uses, each writing one JSON result:
 
-The master seed is not the dataset's, so no locked scene is drawn. Writes results/travel_check.json.
+- With ``--data-root``, apply the rule in ``docs/PREREGISTRATION.md`` to a finished dataset: this
+  is the spot-check's step. It reads the manifest and reruns named scenes and controls from their
+  seeds, and exits with status 1 if the data isn't accepted. Writes results/travel_rule.json.
+- With ``--control-sample``, measure the rule's controls on scenes of every kind and split, from a
+  seed that isn't the dataset's. Writes results/travel_controls.json.
+- With neither, the sample behind results/travel_check.json: ordinary late-obstacle train scenes,
+  where a late obstacle can throw up a one-off spike in speed, from the same seed.
 
-Usage: uv run python scripts/check_travel.py
+Usage: uv run python scripts/check_travel.py [--data-root data | --control-sample]
 """
 
+import argparse
 import json
 from pathlib import Path
 
 import numpy as np
-import torch
 
 from sandeha.data.generate import git_state, load_config, scene_seed
-from sandeha.physics.scenes import MIN_THICKNESS, Scene, sample_scene
-from sandeha.physics.solver import SmokeSolver, SmokeState
+from sandeha.data.store import read_manifest
+from sandeha.data.travel import (
+    CONTROLS,
+    FORK_FRAMES,
+    apply_travel_rule,
+    fork_frame,
+    measure_control_sample,
+    step_size_difference,
+    travel_by_frame,
+)
+from sandeha.physics.scenes import MIN_THICKNESS, sample_scene
 
 ROOT = Path(__file__).resolve().parents[1]
 SEED = 777123  # Not the dataset's seed.
 LATE_SCENES = 62
 BATCH = 16
-FORK_FRAMES = 5
-CONTROLS = 3
-DEVICE = torch.device("cuda")
+SCENES_PER_SPLIT = 16
 
 
-def empty_state(count: int, res: int) -> SmokeState:
-    return SmokeState(
-        torch.zeros(count, 2, res, res, device=DEVICE), torch.zeros(count, 1, res, res, device=DEVICE)
-    )
+def write_result(path: Path, result: dict) -> None:
+    path.write_text(json.dumps(result, indent=1) + "\n")
 
 
-def travel_by_frame(batch: list[Scene], res: int, dt: float, frames: int, substeps: int) -> tuple:
-    """Each scene's largest travel in each frame, and whether all of its solves converged."""
-
-    def tensor(arrays):
-        return torch.from_numpy(np.stack(arrays))[:, None].to(DEVICE)
-
-    obstacle, late = tensor([s.obstacle for s in batch]), tensor([s.late_obstacle for s in batch])
-    inflow = tensor([s.inflow for s in batch])
-    late_frame = torch.tensor([s.late_frame for s in batch], device=DEVICE).view(-1, 1, 1, 1)
-    lift = torch.tensor([s.buoyancy for s in batch], device=DEVICE, dtype=torch.float32)
-    solver = SmokeSolver(res, DEVICE, dt)
-    state = empty_state(len(batch), res)
-    travel = torch.zeros(len(batch), frames - 1, device=DEVICE)
-    converged = torch.ones(len(batch), dtype=torch.bool, device=DEVICE)
-    for frame in range(frames - 1):
-        solid = obstacle | (late & (late_frame <= frame))
-        for _ in range(substeps):
-            state = solver.step(state, solid, inflow, lift)
-            converged &= solver.last_solve.converged
-            u, v = state.mac
-            fastest = torch.maximum(u.abs().amax(dim=(1, 2, 3)), v.abs().amax(dim=(1, 2, 3)))
-            travel[:, frame] = torch.maximum(travel[:, frame], fastest * dt * res)
-    return travel.cpu().numpy(), converged.cpu().numpy()
-
-
-def step_size_difference(scene: Scene, res: int, dt: float, substeps: int, fork: int) -> list[float]:
-    """RMS density difference over fluid cells, relative to RMS density, from a shared state."""
-    obstacle = torch.from_numpy(scene.obstacle)[None, None].to(DEVICE)
-    late = torch.from_numpy(scene.late_obstacle)[None, None].to(DEVICE)
-    inflow = torch.from_numpy(scene.inflow)[None, None].to(DEVICE)
-    lift = torch.tensor([scene.buoyancy], device=DEVICE, dtype=torch.float32)
-
-    def solid_at(frame: int) -> torch.Tensor:
-        return obstacle | late if scene.late_frame <= frame else obstacle
-
-    solver = SmokeSolver(res, DEVICE, dt)
-    shared = empty_state(1, res)
-    for frame in range(fork):
-        for _ in range(substeps):
-            shared = solver.step(shared, solid_at(frame), inflow, lift)
-
-    def carry_on(step: float, count: int) -> list[torch.Tensor]:
-        fine = SmokeSolver(res, DEVICE, step)
-        state, out = shared, []
-        for frame in range(fork, fork + FORK_FRAMES):
-            for _ in range(count):
-                state = fine.step(state, solid_at(frame), inflow, lift)
-            out.append(state.density[0, 0])
-        return out
-
-    before = shared.density.clone()
-    coarse, fine = carry_on(dt, substeps), carry_on(dt / 2, 2 * substeps)
-    assert torch.equal(before, shared.density), "a step must not change the state it starts from"
-    result = []
-    for k, (a, b) in enumerate(zip(coarse, fine)):
-        fluid = ~solid_at(fork + k)[0, 0]
-        result.append(float((a - b)[fluid].norm() / b[fluid].norm()))
-    return result
-
-
-def main() -> None:
-    commit, dirty = git_state()
-    if dirty:
-        raise SystemExit("commit first: this result has to trace to a commit")
-    config = load_config(ROOT / "configs" / "data.yaml")
-    res, dt, substeps, frames = config["res"], config["dt"], config["steps_per_frame"], config["frames"]
+def late_sample(config: dict, commit: str, dirty: bool) -> dict:
+    res, frames = config["res"], config["frames"]
     wall = MIN_THICKNESS * res
 
     chosen = []
@@ -115,7 +58,7 @@ def main() -> None:
     rows = []
     for start in range(0, LATE_SCENES, BATCH):
         group = chosen[start : start + BATCH]
-        travel, converged = travel_by_frame([s for _, s in group], res, dt, frames, substeps)
+        travel, converged = travel_by_frame([s for _, s in group], config)
         for k, (scene_index, scene) in enumerate(group):
             # The event's own spike comes in the frame out of late_frame, and may last a little.
             outside = np.ones(frames - 1, dtype=bool)
@@ -136,17 +79,16 @@ def main() -> None:
     scenes = dict(chosen)
     forks = []
     for row in by_travel[-1:] + by_travel[:CONTROLS]:
-        fork = row["largest_travel_frame"]
-        scene = scenes[row["scene_index"]]
-        difference = step_size_difference(scene, res, dt, substeps, min(fork, frames - 1 - FORK_FRAMES))
+        fork = fork_frame(row["largest_travel_frame"], frames)
+        difference = step_size_difference(scenes[row["scene_index"]], config, fork)
         forks.append({**row, "density_difference_by_frame": difference, "figure": max(difference)})
 
     largest = by_travel[-1]["largest_travel"]
-    result = {
+    return {
         "git_commit": commit,
         "git_dirty": dirty,
         "seed": SEED,
-        "dt": dt,
+        "dt": config["dt"],
         "thinnest_wall_cells": wall,
         "draws_to_find_late_scenes": index,
         "scenes": rows,
@@ -162,8 +104,35 @@ def main() -> None:
             "largest_control_figure": max(fork["figure"] for fork in forks[1:]),
         },
     }
-    path = ROOT / "results" / "travel_check.json"
-    path.write_text(json.dumps(result, indent=1) + "\n")
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--data-root", type=Path, help="apply the rule to this finished dataset")
+    parser.add_argument("--control-sample", action="store_true", help="measure controls on every kind of scene")
+    parser.add_argument("--out", type=Path, help="where to write the result")
+    args = parser.parse_args()
+    commit, dirty = git_state()
+
+    if args.data_root is not None:
+        # The new manifest's tracked copy isn't committed until the spot-check ends, so a tree
+        # with that change is the normal case here. The result records the state it ran in.
+        result = {"git_commit": commit, "git_dirty": dirty, **apply_travel_rule(read_manifest(args.data_root))}
+        write_result(args.out or ROOT / "results" / "travel_rule.json", result)
+        print(json.dumps(result, indent=1))
+        if not result["data_accepted"]:
+            raise SystemExit("not accepted: see the rule in docs/PREREGISTRATION.md")
+        return
+
+    if dirty:
+        raise SystemExit("commit first: this result has to trace to a commit")
+    config = load_config(ROOT / "configs" / "data.yaml")
+    if args.control_sample:
+        result = {"git_commit": commit, "git_dirty": dirty, **measure_control_sample(config, SEED, SCENES_PER_SPLIT)}
+        write_result(args.out or ROOT / "results" / "travel_controls.json", result)
+    else:
+        result = late_sample(config, commit, dirty)
+        write_result(args.out or ROOT / "results" / "travel_check.json", result)
     print({key: value for key, value in result.items() if key != "scenes"})
 
 
