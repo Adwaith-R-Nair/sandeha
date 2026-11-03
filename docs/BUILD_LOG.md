@@ -844,3 +844,12 @@ Built `src/sandeha/hybrid.py`, `src/sandeha/handoff_selection.py` and `scripts/s
 
 - **`results/handoff_selection.json` doesn't exist yet.** After the ensemble is trained, run `scripts/long_job.sh select_handoff uv run python scripts/select_handoff.py`, then commit the file before any test split opens.
 - **Selection time isn't measured.** Its log gives each rollout set's seconds, and Task 9 must judge the total against the evaluation budget.
+
+## 2026-11-03: Phase 7, Task 11 code (demo server)
+
+Built `src/sandeha/demo/server.py`, `scripts/run_demo.py` and `scripts/bench_demo.py`, added `fastapi`, `uvicorn` and `websockets`, and `httpx` for tests. Decision is B53. Tested on CPU with stub members and small randomly initialised U-Nets: `tests/demo/test_server.py` and `tests/test_hybrid.py` pass. A full-size run with `--random-weights --device cpu` streamed frames to a real WebSocket client, took a preset, a brush and solver mode, survived a reconnect, and exited 0.
+
+### Open items
+
+- **`results/demo_bench.json` doesn't exist yet.** After training, run `uv run python scripts/bench_demo.py` with the GPU otherwise idle, and commit the file. Only random weights on the CPU have run so far, for 2 s per rung, which says nothing about the target.
+- **Trained loading and GPU behaviour haven't run.** That covers `results/ensemble.json`, `results/handoff_selection.json`, mixed precision and a real out-of-memory error, which the tests raise by hand.

@@ -158,6 +158,8 @@ class HybridSimulator:
 
     ``error_of(frame, fields, solid)`` gives the true error of the ensemble's output for ``frame``,
     with ``solid`` the mask on the way into it. It is called only for that frame, and only for ``Oracle``.
+    ``on_solver_frame(frame, fields, doubt_map, doubt)`` is called for each hand-off frame as it is made,
+    with the doubt that came from the ensemble step into the hand-off.
     """
 
     def __init__(
@@ -171,6 +173,7 @@ class HybridSimulator:
         doubt_method: str = "mean",
         amp: bool = False,
         error_of: Callable[[int, Tensor, Tensor], float] | None = None,
+        on_solver_frame: Callable[[int, Tensor, Tensor, float], None] | None = None,
     ):
         self.ensemble = ensemble
         self.solver = solver
@@ -180,6 +183,7 @@ class HybridSimulator:
         self.doubt_method = doubt_method
         self.amp = amp
         self.error_of = error_of
+        self.on_solver_frame = on_solver_frame
         self.frame = 0
         self.solver_failed = False
         self.fine_state: SmokeState | None = None  # The last hand-off's state at the reference grid.
@@ -264,7 +268,7 @@ class HybridSimulator:
             forced = not hand_off and not finite and self.policy.rescues
             hand_off = hand_off or forced
 
-        frames = self._hand_off(solid, before) if hand_off else [out.mean]
+        frames = self._hand_off(solid, before, out.doubt_map, doubt) if hand_off else [out.mean]
         if self.solver_failed:
             # That frame and all later ones count as blown up, whatever a model makes of them.
             frames[-1] = torch.full_like(frames[-1], torch.nan)
@@ -284,7 +288,7 @@ class HybridSimulator:
             solver_failed=self.solver_failed,
         )
 
-    def _hand_off(self, solid: tuple[Tensor, Tensor], before: int) -> list[Tensor]:
+    def _hand_off(self, solid: tuple[Tensor, Tensor], before: int, doubt_map: Tensor, doubt: float) -> list[Tensor]:
         """Up to ``handoff_frames`` frames from the kept frame. A failing solver stops at the failure."""
         fine = F.interpolate(self.fields, scale_factor=self.factor, mode="bilinear", align_corners=False)
         state = SmokeState(fine[:, :2], fine[:, 2:])
@@ -297,6 +301,8 @@ class HybridSimulator:
             # The same 2x2 average, zero in solid cells, that the data stores.
             pooled = F.avg_pool2d(torch.cat([state.velocity, state.density], dim=1), self.factor)
             frames.append(pooled * ~coarse_solid)
+            if self.on_solver_frame is not None:
+                self.on_solver_frame(before + k + 1, frames[-1], doubt_map, doubt)
             if not frames[-1].isfinite().all():
                 self.solver_failed = True
                 break
