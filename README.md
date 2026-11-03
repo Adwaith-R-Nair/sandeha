@@ -137,6 +137,7 @@ A `START` line with no `END` line in `runs/jobs.log` means the wrapper was kille
 | Document | What it covers |
 |---|---|
 | [RESULTS](docs/RESULTS.md) | Every result, weak ones included, with the analysis of why hand-off fell short |
+| [REPORT](docs/REPORT.md) | Course report: methods, results, discussion, limits and references |
 | [MODEL_CARD](docs/MODEL_CARD.md) | What the models are, and where not to trust them |
 | [VIVA_GUIDE](docs/VIVA_GUIDE.md) | Concepts in plain language, hard questions and the demo script |
 | [PREREGISTRATION](docs/PREREGISTRATION.md) | What was fixed before any data or model existed |

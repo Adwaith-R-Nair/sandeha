@@ -1,6 +1,6 @@
 # Sandeha: High-Level Design
 
-**Status:** the code under `src/sandeha/`, `scripts/` and `configs/` is built, including the demo. The dataset is generated and the architecture is chosen. No experiment has run yet, so nothing here says how well the ensemble, its doubt or its hand-off work. Those answers will be in `results/exp_*.json` and `docs/RESULTS.md`.
+**Status:** the code under `src/sandeha/`, `scripts/` and `configs/` is built, including the demo. The dataset, ensemble and final experiment are complete; see `docs/RESULTS.md`.
 
 Details are in `LLD.md`, tests in `TEST_PLAN.md`, reasons in `DECISIONS.md`, and experiment rules in `PREREGISTRATION.md`.
 

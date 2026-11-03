@@ -16,7 +16,7 @@
 |---|---|
 | 1 to 9, 11 and 12 | Done, with results in `RESULTS.md`. `--final` ran once. Doubt-based hand-off didn't beat the baselines, and that is reported as a finding |
 | 10, public track | **PUBLIC TRACK PENDING.** Code is written and training is under way. `results/exp_well.json` doesn't exist yet |
-| 13, hand-over | Done: references, `HLD`, `LLD`, `DECISIONS`, `BUILD_LOG`, `TEST_PLAN`, `RESULTS`, `MODEL_CARD`, `VIVA_GUIDE` and `README`. Open: `REPORT.md`, the clean-clone check, the audit, publishing the weights as release `v1.0`, and a full test run on the GPU |
+| 13, hand-over | Done: references, `HLD`, `LLD`, `DECISIONS`, `BUILD_LOG`, `TEST_PLAN`, `RESULTS`, `MODEL_CARD`, `VIVA_GUIDE` and `README`. `REPORT.md` is drafted. Open: the clean-clone check, the audit, publishing the weights as release `v1.0`, and a full test run on the GPU |
 
 ## Global Constraints
 
