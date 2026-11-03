@@ -5,6 +5,8 @@ description = "A neural smoke simulator that hands off to a physics solver when 
 readme = "README.md"
 requires-python = ">=3.12,<3.13"
 dependencies = [
+    "h5py>=3.16.0",
+    "huggingface-hub>=2.4.0",
     "matplotlib>=3.11.2",
     "numpy>=2.5.4",
     "pyyaml>=6",

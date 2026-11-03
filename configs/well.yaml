@@ -1,0 +1,43 @@
+# Public-dataset track (docs/PLAN.md, Task 10): a published simulation benchmark, not measured data.
+# Download into data_root with the command in docs/BUILD_LOG.md. Nothing in the download is run.
+data_root: data/well
+device: auto
+# Confirmed against the files by the loader. From the dataset's card and file listing.
+expected:
+  grid: [128, 384]
+  steps: 101
+  trajectories: {train: 72, valid: 9, test: 9}
+seeds: [0, 1, 2]
+seed: 0
+model:
+  arch: unet
+  base_width: 32
+  levels: 4
+  inputs: 4
+  outputs: 4
+batch_size: 8 # Three times the main track's cells per frame. Not yet measured against 6 GB.
+num_workers: 2
+lr: 3.0e-4
+weight_decay: 0.01
+mixed_precision: true
+warmup_fraction: 0.1
+pushforward_prob: 0.5
+pushforward_max: 3
+max_minutes: 40
+timing_steps: 50
+eval_every: 500
+checkpoint_every: 500
+log_every: 50
+rollout_start: 20
+rollout_steps: 20
+eval_batch_size: 4
+# The main track's windows, with the secondary one ending where this dataset's frames do.
+evidence:
+  start: 20
+  first: 21
+  last: 70
+  secondary_last: 100
+  bad_percentile: 80
+  min_each_class: 5
+  bootstrap: 2000
+  seed: 0

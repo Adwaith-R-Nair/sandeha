@@ -816,3 +816,18 @@ Built `scripts/select_arch.py`, `scripts/train_ensemble.py`, `src/sandeha/train/
 ## 2026-11-03: Phase 5, Task 7 (ensemble and doubt)
 
 Built `src/sandeha/ensemble.py` with `Ensemble`, `EnsembleOut` and `doubt_score`. Decision is B50. Tested on CPU with stub members and small randomly initialised U-Nets, with no trained model and no split opened: `tests/test_ensemble.py` gave 24 passed. The full test suite wasn't rerun, and no existing module changed.
+
+## 2026-11-03: Phase 6, Task 10 code (public-dataset track)
+
+Built `src/sandeha/well/`, `scripts/train_well.py`, `scripts/eval_well.py` and `configs/well.yaml`, and added `h5py` and `huggingface_hub`. Decision is B51. The on-disk layout and expected counts come from the dataset's card, file listing and viewing notebook, read without downloading any data. Tested on tiny synthetic HDF5 on the CPU: `tests/well` gave 34 passed and 1 skipped, the skip being `test_real_file_shapes`. The scripts also ran end to end on synthetic data. Nothing has been downloaded or trained, and `results/exp_well.json` doesn't exist yet.
+
+Download, which leaves out the notebook, so nothing in the download can be run:
+
+    uv run hf download polymathic-ai/turbulent_radiative_layer_2D --repo-type dataset --local-dir data/well --include "data/*" "stats.yaml"
+
+### Open items
+
+- **After download, run `uv run pytest tests/well/test_well_data.py`.** `test_real_file_shapes` confirms 128 by 384, 101 steps, and 72, 9 and 9 trajectories. Only the 8 per train file is shown by the notebook. The 9 for valid and test is inferred from file sizes and the card's total of 90.
+- **Batch size 8 and mixed precision haven't run on the GPU.** The first steps of a run will show whether 8 fits in 6 GB.
+- **The test split has 9 trajectories, one per cooling time.** Each time's Spearman is across 9 values, and the interval will be wide. Within-time AUROC needs 5 bad and 5 good frames at a time, which 9 can't give, so it will report every time as excluded, and pooled AUROC is the only AUROC figure. Doubt and error may also both vary with the cooling time, which isn't an input.
+- **Task 9's `eval/metrics.py` will repeat `spearman` and `auroc` from `well/doubt.py`.** Use one copy once both exist.
