@@ -607,3 +607,95 @@ Rounding is the root mean square error from `float16` over fluid cells, and fram
 ### Next
 
 Generate the dataset and spot-check it, then Task 5.
+
+## 2026-11-03: Phase 3, Task 4 (review fixes)
+
+The full dataset has still **not** been generated, and the spot-check has not been run. Both come later. No file exists under `data/`. Code changes ran on tiny data. The one larger run is the travel sample below, at a seed outside the dataset.
+
+### Each review finding, checked before changing anything
+
+| Finding | How it was checked | Result |
+|---|---|---|
+| Evidence measure names no rollouts or frames, and Spearman can't vary with `handoff_frames` | Reading the file | Real |
+| No rule for non-finite doubt | Reading the file. Tasks 8 and 9 don't exist | Real |
+| Hand-off selection can't be applied as written (fallback, grid, overlap, "must land") | Reading the file | Real |
+| A torn timing line stops every resume | New test on the old code | Real: failed |
+| Normaliser's late-obstacle masks untested | Both mutants on a scratch clone | Real: 78 passed on each |
+| `inflow_scale` untested | Mutant set to 1.0 | Real: 78 passed |
+| `test_c` side count untested | Inverted mutant | Real: 78 passed |
+| B25's margin is stale | Reran the sample: seed 777123, 62 late-obstacle train scenes | Real, same figures. See below |
+| Preregistration quotes one `test_c` low group only | `results/scene_check.json` | Real: corner group 59 to 92 and 6 of 8 after frame 70; side group 2 of 8 at frames 71 and 79 |
+
+A control clone with no mutation also passed all 78, so these runs did test the mutated package.
+
+### Code
+
+- `_record_timing` syncs each line. A resume cuts a torn tail, and the summary skips and counts unreadable lines (`DECISIONS.md` B36).
+- The manifest now holds `travel_by_scene`, `travel_frame_by_scene`, `thinnest_wall_cells` and `scenes_over_thinnest_wall` (B35). B25's statement that each scene's travel was already in the manifest was wrong, and is corrected.
+- `scripts/check_travel.py` and `results/travel_check.json` are new, beyond the plan's file list.
+
+The solver and sampling didn't change, so the data this run will produce differs only in manifest fields.
+
+### Test runs
+
+| Step | Result |
+|---|---|
+| New and changed tests, with one related existing test, on the old code | 10 failed, 5 passed. Those that passed: 3 test-gap tests, which check behaviour already correct and are shown by the mutants below, the existing torn-file test, and a missing-file test too weak to fail |
+| Missing-file test tightened to stop on the last scene | Failing path then covered: no batch runs on the resume, so no file is made |
+| First implementation | 88 passed, 2 failed, both faults in new tests: a wrong expected scene count, and a limit of 0.1 cells that 3-frame scenes never reached. The test now takes its limit from the scenes' own travel |
+| Full suite, `uv run pytest`, at `6759a1d` | 286 passed in 243.82s |
+
+### Mutants, on the new tests
+
+Run on a scratch clone with `tests/data`, stopping at the first failure. Control: passed. All 9 mutants were killed.
+
+| Mutant | Killed by |
+|---|---|
+| Frame scale using the outgoing masks | `test_normalizer_applies_a_late_obstacle_on_the_planned_frames` |
+| Change scale using the incoming masks | Same |
+| `inflow_scale` of 1.0 | `test_inflow_scale_is_the_peak_of_train` |
+| `inflow_scale` from the first scene only | Same |
+| `test_c` side count inverted | `test_manifest_counts_test_c_sides_from_buoyancy` |
+| No sync on a timing line | `test_a_timing_line_is_on_disk_before_the_next_batch` |
+| No cut of a torn tail | `test_resume_survives_a_torn_timing_line` |
+| Every scene named as above the wall | `test_manifest_names_the_scenes_above_the_thinnest_wall` |
+| Frame of largest travel fixed at 0 | `test_fields_match_a_direct_solver_run` |
+
+### Travel sample
+
+From `results/travel_check.json`, at `96c4ac3` with a clean tree under `long_job.sh`, on 62 ordinary late-obstacle train scenes, from 171 draws at seed 777123. None are in the dataset.
+
+| Figure | Value |
+|---|---|
+| Largest travel | 9.97 cells per step, scene index 7, in the frame out of its `late_frame` of 90 |
+| That scene's largest outside the event | 6.24 |
+| Second largest of the sample | 5.64 |
+| Thinnest wall, and margin to it | 10.24 cells, 2.6% |
+| Scenes above the wall | 0 |
+| All solves converged | Yes |
+
+The review quoted the margin as about 2.7%. The saved figure is 2.65%, or 2.6% as written here. The estimate sample's 4.13 to 6.60, at 16 scenes per split, didn't show this spike.
+
+Restarting from the frame of largest travel at `dt=0.01` and `dt=0.005`, and comparing density over 5 frames: 0.093 for that scene, and 0.070, 0.054 and 0.034 for the 3 lowest-travel scenes. Comparing whole runs instead, in a scratch run with no saved result, showed them already far apart before the spike, so no figure is quoted, and that comparison wasn't used for the rule. No scene above the wall has been measured, so whether a larger spike leaks smoke is still unknown.
+
+### Time estimate
+
+Unchanged, and not measured again: **0.37 h (22.2 minutes) of computing against the 1.5 h budget**, or 1331.8 s. It is in `results/generation_estimate.json`, measured at `3d7ba63`. These changes add one sync per batch and a few per-scene figures, and don't touch the solver. Its limits above still apply: extrapolated from 80 of 360 scenes, sustained heat not covered.
+
+### Open items
+
+- **Tasks 8 and 9 have new requirements.** `Policy` needs the forced hand-off, `FixedSchedule` a per-scene offset, and the metrics need the ranking rule. `docs/PLAN.md` lists the tests. Their rules were written from text alone, with no code to run them.
+- **Selection's cost isn't measured.** Up to 72 validation rollout sets, against a 1 h evaluation budget (B33). No model exists yet.
+- **`--final`'s claim rule** is new (B34). The owner may want to review it and the factor of 2 in B35 before any model exists.
+- **A scene above the wall is possible** in the real run, given one sample scene reached 9.97 of 10.24. The rule is in the preregistration.
+- **Test splits at the spot-check:** the travel rule reruns scenes from their seeds and uses only manifest figures, so it needn't open a split's fields.
+
+### Not done
+
+- The full generation and its spot-check.
+- The independent phase check and push for Phase 2 and this phase. Nothing was pushed.
+
+### Next
+
+Generate the dataset and spot-check it, then Task 5.
+
