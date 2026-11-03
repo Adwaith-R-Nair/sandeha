@@ -406,3 +406,7 @@ Each major decision, the alternatives and the reason. Status is **Default** for 
 - **Alternatives:** only listing the commits, like `select_handoff`, which still gives old numbers after a fix. Rerunning on any new commit, which loses hours to a commit touching only the docs.
 - **Reason:** without this, re-running after a fix returned the old numbers stamped with the fix's commit, and an ablation finishing after `--final` began meant deleting the run and opening the test splits again. No preregistered rule changed.
 - **Cost:** any edit to the hashed code reruns every set on the next run, even one that can't change a number, so `--final` must not restart after an unrelated code commit unless a further pass over the test splits is intended. `checkpoint_sha256` in results now counts only the ensemble's members. `select_handoff` still reuses its runs across commits and only lists them.
+
+## Architecture selection
+
+U-Net won on validation rollout error over 20 steps from frame 20, with equal 40 minute budgets on seed 0: U-Net 0.0915, FNO 0.1258, persistence 0.6689 (`results/arch_selection.json`). The ensemble uses the U-Net. The `git_commit` in that file is the commit when the job wrote its result. Later commits in the job's lifetime added evaluation and demo code and left training code unchanged.

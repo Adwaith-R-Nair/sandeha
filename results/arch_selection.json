@@ -1,0 +1,35 @@
+{
+ "winner": "unet",
+ "split": "val",
+ "measure": "mean RMS rollout error in normalised field units, on fluid cells",
+ "rollout_start": 20,
+ "rollout_steps": 20,
+ "seed": 0,
+ "max_minutes": 40,
+ "candidates": {
+  "unet": {
+   "val_error": 0.09147062503461105,
+   "best_step": 26000,
+   "total_steps": 26714,
+   "skipped_steps": 0,
+   "seconds_per_step": 0.06758460314586046,
+   "parameters": 2263107,
+   "checkpoint": "runs/select/unet/best.pt",
+   "checkpoint_sha256": "a5f2b032f3e7a94f21918726a8783626fe5aac163976f49e041748540273b26f"
+  },
+  "fno": {
+   "val_error": 0.12584704872143143,
+   "best_step": 27000,
+   "total_steps": 29103,
+   "skipped_steps": 0,
+   "seconds_per_step": 0.0645559859582742,
+   "parameters": 21248499,
+   "checkpoint": "runs/select/fno/best.pt",
+   "checkpoint_sha256": "82a381745257f4c4153c8833e18ad9f3179fbbe44be4be191d48972e7efc8890"
+  }
+ },
+ "persistence_error": 0.6689278872931997,
+ "git_commit": "2529b2be141941064aa0de3383ee459ae8ca51aa",
+ "git_dirty": false,
+ "data_manifest_sha256": "ac363e1f582a4719ef15e4c6ec52f4bcfaa61836eba6fa6f328576af4d4544a6"
+}
