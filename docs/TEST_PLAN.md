@@ -87,7 +87,10 @@ Data checks, in `tests/data/`, on tiny datasets: 64×64 reference grid and a few
 | `test_no_scene_shared_between_splits`, `test_seeds_are_disjoint_at_the_planned_size`, `test_a_scene_seed_does_not_depend_on_split_sizes`, `test_scene_uses_its_own_seed` | Seeds and scene content are disjoint. Resizing one split rerolls no other |
 | `test_resume_generation`, `test_killed_process_resumes_to_the_same_bytes`, `test_resume_does_not_redo_finished_scenes`, `test_resume_ignores_a_torn_temporary_file` | Interrupted at a boundary, inside a batch, or by a real SIGKILL across processes, a run ends with the same checksums as an uninterrupted one. This also exercises determinism across processes, an open item from Task 2 |
 | `test_resume_refuses_a_changed_config`, `test_resume_refuses_a_changed_commit`, `test_finished_data_is_never_regenerated`, `test_dirty_tree_is_refused_unless_allowed` | The set can't change silently |
-| `test_fields_match_a_direct_solver_run` | Stored frames match a separate solver loop to the byte, which pins down late-obstacle timing, downsampling and solid clearing |
+| `test_fields_match_a_direct_solver_run` | Stored frames match a separate solver loop to the byte, which pins down late-obstacle timing, downsampling and solid clearing. Each scene's largest travel and its frame match the same loop |
+| `test_resume_survives_a_torn_timing_line`, `test_an_unreadable_line_inside_the_timing_file_is_counted`, `test_a_missing_timing_file_costs_only_the_timing`, `test_a_timing_line_is_on_disk_before_the_next_batch` | Damaged timing costs only timing: a resume finishes with the same checksums, and the manifest counts what it couldn't read |
+| `test_manifest_records_each_scene_s_travel`, `test_manifest_names_the_scenes_above_the_thinnest_wall` | The spot-check's rule for travel above the thinnest wall has its figures |
+| `test_manifest_counts_test_c_sides_from_buoyancy`, `test_normalizer_applies_a_late_obstacle_on_the_planned_frames`, `test_inflow_scale_is_the_peak_of_train` | Side counts and scales match figures worked out separately |
 | `test_every_target_is_clear_of_the_mask_in_its_input`, `test_late_obstacle_changes_the_mask_at_its_frame`, `test_obstacle_seq_follows_a_late_obstacle` | Masks and targets agree through a late obstacle |
 | `test_non_finite_state_stops_the_run_and_stores_nothing`, `test_float16_overflow_stops_the_run`, `test_unconverged_solves_are_recorded`, `test_manifest_records_solver_health`, `test_manifest_records_how_float16_compares_with_the_change_per_frame` | A bad state never reaches the store, and solver health and rounding are on record |
 | `test_normalizer_uses_train_only`, `test_normalizer_refuses_to_fit_on_any_other_split`, `test_fit_matches_the_saved_normalizer`, `test_a_constant_channel_is_refused` | Stats match a separate calculation on train, and differ from another split's |
@@ -99,11 +102,11 @@ Model output shapes, solid cells forced to zero, zero divergence for uniform flo
 
 ## Ensemble and hybrid (Tasks 7 and 8)
 
-Zero doubt from identical members and from a single member, disagreement raising doubt, doubt scores ignoring solid cells, low divergence after hand-off, schedule and budget policies behaving to specification, the threshold policy triggering only above `tau`, the oracle never reading the future, obstacle edits applying on the next frame, and timing including every ensemble member.
+Zero doubt from identical members and from a single member, disagreement raising doubt, doubt scores ignoring solid cells, low divergence after hand-off, schedule and budget policies behaving to specification, the threshold policy triggering only above `tau` or on non-finite doubt, a forced hand-off from the last finite frame under every policy, the oracle never reading the future, obstacle edits applying on the next frame, and timing including every ensemble member.
 
 ## Experiments (Task 9)
 
-Known-answer tests for each metric. A blown-up rollout counts as capped maximum error and stays in the average. Results carry provenance, the renderer refuses results without it, and experiments open only `val` without `--final`.
+Known-answer tests for each metric. A blown-up rollout counts as capped maximum error and stays in the average. Non-finite doubt ranks highest in every ranking, and no frame is dropped. Selection steps, tie-breaks, baseline schedules and unmatched budgets follow `docs/PREREGISTRATION.md`. Results carry provenance, the renderer refuses results without it, and experiments open only `val` without `--final`.
 
 ## Public track (Task 10)
 

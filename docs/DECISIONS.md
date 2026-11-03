@@ -196,7 +196,9 @@ Each major decision, the alternatives and the reason. Status is **Default** for 
 
 - **Decision:** the value all solver and scene checks used.
 - **Alternatives:** a larger `dt` for less work, or a smaller one for a margin.
-- **Reason:** those checks measured a largest travel of 7.32 cells per step against the 10.24-cell thinnest wall, or about `dt=0.014` before the two meet. A larger value gives up that margin, and a smaller one multiplies the cost and invalidates the checks. That travel came from eight scenes per group, so it isn't a bound. Each scene's largest travel is now recorded in the manifest.
+- **Reason:** a larger value gives up margin against the 10.24-cell thinnest wall, and a smaller one multiplies the cost and invalidates the checks.
+- **Corrected after review.** This entry first gave a largest travel of 7.32 cells per step, from eight scenes per group, and so a limit near `dt=0.014`, or about 40% of margin. That margin was wrong for late-obstacle scenes. In `results/travel_check.json`, over 62 ordinary late-obstacle train scenes at a seed outside the dataset, scene index 7 reached 9.97 cells per step in the frame out of its `late_frame` of 90, a margin of about 2.6%. Its largest outside the event was 6.24. It was the only such spike: the next largest was 5.64, none passed 10.24, and all solves converged. At that scene's margin, `dt=0.01` is about the limit, not a value well inside it. With about 100 late-obstacle scenes planned in train alone, and more in `val` and `test_a`, a scene above the wall is possible. `dt` is kept because a smaller value would double the cost, and in this scene travel was back to at most 6.24 outside the 3 frames from the event. Whether a spike above the wall leaks smoke has not been measured. See B35.
+- This entry also said each scene's largest travel was in the manifest. It held only each split's largest. Each scene's figure and frame are there now.
 
 ### B26: What stops a generation run, and what is only recorded (2026-11-03)
 
@@ -232,3 +234,44 @@ Each major decision, the alternatives and the reason. Status is **Default** for 
 - **Decision:** the spot-check in Task 4 opens test splits with `final_eval=True` to render a sample scene from each and check stats, stated as an exception in `docs/PREREGISTRATION.md`.
 - **Alternatives:** rely on the statistics in the manifest for those splits, and render only train and val.
 - **Reason:** the plan requires both "test splits are read only by final evaluation" and "render a sample scene from each split". No model exists at that point and nothing gets tuned from it, and an unrendered defect in a test set would cost more. The manifest covers most of the same statistics without opening the splits.
+
+### B31: Which rollouts and frames count as evidence (2026-11-03). Changed after review
+
+- **Decision:** the within-time Spearman, AUROC, calibration and risk-coverage use ensemble-mean rollouts with no hand-off, at frames 21 to 70. Frames 21 to 120 and independent rollouts are reported as secondary and don't count as evidence.
+- **Alternatives:** hand-off rollouts, or frames 21 to 120.
+- **Reason:** the first version named no rollouts or frames for the evidence measure, so a result could have been chosen after being seen. Solver frames have no doubt score, and hand-off rollouts depend on `tau`, which is chosen later. Frames 21 to 70 match the primary metric.
+- **Cost:** no evidence figure covers what doubt does once hand-offs have run, or after frame 70.
+
+### B32: Non-finite doubt ranks highest, and triggers a hand-off under every policy (2026-11-03). Changed after review
+
+- **Decision:** a non-finite score counts as positive infinity in every ranking. It triggers a hand-off in doubt, fixed and random policies alike, starting from the frame before.
+- **Alternatives:** drop those frames, which flatters results and goes against the plan's first review focus. Or trigger on doubt only, and let baselines blow up.
+- **Reason:** NaN has no rank, and `doubt > tau` is false for NaN, so a blown-up rollout would never have handed off. Giving the rescue only to the doubt policy would credit doubt with a check any system could make. Rule written from the text: Tasks 8 and 9 don't exist yet.
+- **Cost:** blown-up frames add agreeing high ranks, which raises the correlation. Their number is reported beside each figure for this reason. Task 8's plan is more exact now: `Policy` needs the forced hand-off and `FixedSchedule` a per-scene offset.
+
+### B33: Hand-off selection in fixed steps, with a candidate grid and no fallback (2026-11-03). Changed after review
+
+- **Decision:** the evidence measure narrows aggregation, comparing each with the leader by a paired bootstrap interval. Then a run for each aggregation left in, `handoff_frames` from `{2, 5, 10}`, and `tau` at 8 percentiles of validation doubt, plus a **never** candidate, is judged by primary error at a share up to 25%. Exact ties have a fixed order.
+- **Alternatives:** the first version: first by Spearman, with ties as overlapping intervals. Or a finer grid, or a `tau` search per run.
+- **Reason:** the first version could not be applied. Spearman on no-hand-off rollouts can't vary with `handoff_frames`, so all three tied. Overlap isn't transitive, and no tie-break covered that case. The fallback for no eligible `tau` contradicted itself, and no grid was given, so the result depended on an unstated choice. With **never** in the grid, an eligible choice always exists, so the fallback is gone.
+- **Cost:** `handoff_frames` is now chosen by error alone. Percentiles come from no-hand-off doubt, and doubt falls after a hand-off, so a percentile doesn't give a known share, and the grid may not get near 25%. At worst this means 72 validation rollout sets, 3 aggregations by 3 values by 8 candidates. No model exists, so the time for this isn't measured, and Task 9 must measure it against the evaluation budget.
+
+### B34: Baselines' schedules, unmatched budgets and what "beats" means (2026-11-03). Changed after review
+
+- **Decision:** schedules are worked out from the budget before any rollout runs, and per-side on `test_c`. The fixed schedule offsets each scene. If a baseline can't land within 1 percentage point, the schedules either side of the budget both run, flagged. Doubt beats a baseline only with a paired interval wholly below zero, against a baseline at or above the budget.
+- **Alternatives:** a tolerance widened to fit, which would move with the result. Or dropping an unmatched comparison, which would hide it. Or one budget on `test_c` for both sides, which would compare the sides at unequal shares.
+- **Reason:** the first version said each baseline "must land" within 1 point with no rule for when it couldn't. Random with 10-frame blocks and fixed schedules at high budgets are coarse. Forced hand-offs can only add solver frames, so a baseline they push out stays above budget, which is the conservative side. "Beats" had no definition, and the claim rule needed one.
+
+### B35: Each scene's travel in the manifest, and a spot-check rule above the wall (2026-11-03). Changed after review
+
+- **Decision:** the manifest holds each scene's largest travel and its frame, and names the scenes above the thinnest wall. Named scenes are restarted from that frame at `dt=0.01` and `dt=0.005`, and pass at up to twice the largest figure from 3 low-travel controls. A failure means regenerating at `dt=0.005`. Generation doesn't stop for this.
+- **Alternatives:** compare whole runs at the two step sizes. Or treat any scene above the wall as a defect.
+- **Reason:** nothing compared the recorded travel with the limit. Whole runs at the two step sizes, tried on the sample in a scratch run with no saved result, were already far apart before the spike, so chaos would hide any effect of it. Restarting from one state leaves that out. In `results/travel_check.json`, the 9.97 scene has a figure of 0.093, and the largest of 3 controls is 0.070. Regenerating over any one scene would double the data's cost for what may be a short event with no effect.
+- **Limit:** no scene above the wall has been measured, and the factor of 2 is a choice. A whole-field figure can miss a small local leak.
+
+### B36: A torn timing line can't stop generation (2026-11-03). Changed after review
+
+- **Decision:** `_record_timing` syncs each line. A resume cuts anything after the last full line, and the summary skips and counts any line it can't read, as `timing.unreadable_lines`. A missing file gives empty timing.
+- **Alternatives:** write each timing entry atomically to its own file, or stop and ask for a hand edit.
+- **Reason:** timing isn't part of the data, and the design requires a long job to be safe to restart. A torn last line raised `JSONDecodeError` after all simulation and joining, on every resume. Without the cut, the next entry would have joined the torn one and been lost too.
+- **Cost:** a lost line understates that batch's time in the manifest's totals. `by_split` scene counts then fall short of the split's size.

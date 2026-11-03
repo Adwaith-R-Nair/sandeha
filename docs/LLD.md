@@ -144,7 +144,7 @@ Files under `data/`, none tracked:
 | `manifest.json` | Seeds, config, commit, SHA-256 of each file and each split, realised late obstacles and `test_c` sides, solver health, rounding, timing. Written last: with no manifest, no split opens. A copy goes to `results/data_manifest.json`, which is tracked |
 | `normalizer.json` | The normaliser, and its checksum in the manifest |
 | `generation.json` | The config and commit a run started with. Guards resuming |
-| `timing.jsonl` | Seconds per batch, across restarts. Not checksummed |
+| `timing.jsonl` | Seconds per batch, across restarts. Not checksummed. A torn last line is cut on resume, and the manifest counts any other line it can't read |
 | `<split>/fields.npy` | `float16`, for the memmap |
 | `<split>/statics.npz` | Per scene: coarse and fine `obstacle`, `late_obstacle` and `inflow`, plus `buoyancy`, `late_frame` (-1 if none) and `seed` |
 | `<split>/fine.npz` | Reference-grid float32 states at `fine_frames`. Cell-centred, so a solver started from one projects first |
@@ -223,7 +223,7 @@ class HybridSimulator:
 
 Hand-off upsamples the state to 256×256, projects it, runs `4 × handoff_frames` solver steps, emits each frame, and downsamples. Timing calls `torch.cuda.synchronize()`.
 
-Chosen on validation only, and recorded in `results/handoff_selection.json`: `handoff_frames` from `{2, 5, 10}`, doubt aggregation from `{mean, p95, p99}`, and the frozen threshold `tau`, which gives the lowest primary error with solver share at or below 25%.
+Chosen on validation only, and recorded in `results/handoff_selection.json`: `handoff_frames` from `{2, 5, 10}`, doubt aggregation from `{mean, p95, p99}`, and the frozen threshold `tau`, which gives the lowest primary error with solver share at or below 25%. The steps, the candidate grid and the hand-off rules are in `docs/PREREGISTRATION.md`.
 
 ## Evaluation
 

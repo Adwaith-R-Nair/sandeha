@@ -1,6 +1,6 @@
 # Sandeha: Preregistration
 
-**Fixed on:** 2026-11-03, before the dataset was generated and before any model existed. Git history is the record of this. The file's commit comes before the data manifest and before all model code.
+**Fixed on:** 2026-11-03, before the dataset was generated and before any model existed. Git history is the record of this. The file's commits come before the data manifest and before all model code. The rules were tightened once after review on the same terms, as the record at the end states.
 
 **Changes:** none of the rules below change after a model has been run on any split. If one has to, the change gets its own dated entry in the section at the end, with the reason, and the original figure is reported beside the changed one. `docs/DESIGN.md` sections 6.2, 6.3 and 6.5 are the source for these rules. Where this file is more exact, it decides.
 
@@ -10,6 +10,10 @@
 - **Reference:** the 256×256 solver run stored at 128×128 in the data split.
 - **Fluid cells:** cells not solid in `obstacle(i, frame - 1)`, the solid in force on the way into that frame.
 - **Rollout:** starts from the stored reference at frame 20 and feeds on its own output. The late obstacle joins the mask at `late_frame`, as it does in the data.
+- **Rollout time:** a frame's number less 20. Every rollout starts at frame 20, so a rollout time is the same frame in every scene.
+- **Doubt score of a frame:** the chosen aggregation of the doubt map from the ensemble step into that frame, over that frame's fluid cells.
+- **Evidence rollouts:** ensemble-mean rollouts with no hand-off, every member stepping from the shared mean, over all of a set's scenes. Hand-off rollouts aren't used, because solver frames have no doubt score, and which frames they replace depends on `tau`.
+- **Bootstrap:** every interval here is a percentile interval from 2000 resamples of whole scenes, with seed 20261103. A paired comparison applies the same resamples to both sides.
 
 ## Primary metric
 
@@ -19,9 +23,16 @@
 
 **Scene score.** The mean per-frame error over frames 21 to 70, a horizon of 50 neural steps from start frame 20.
 
-**Set score.** The mean scene score, with a 95% confidence interval from a bootstrap of 2000 resamples of whole scenes.
+**Set score.** The mean scene score, with a 95% bootstrap interval.
 
-**Horizon.** It stays at 50 steps. The rule was to extend it only if solver checks showed the plume hasn't reached typical obstacles by then. In `results/scene_check.json`, smoke first touches an obstacle by frame 49 at the latest in the train check group and by frame 58 in `test_b`, inside the window. The `test_c` low side reaches obstacles later, at frames 40 to 79 in its check group, and this doesn't extend the horizon: the set is there to test an unfamiliar flow, and its results are reported per side. Those two check groups have 8 scenes each.
+**Horizon.** It stays at 50 steps. The rule was to extend it only if solver checks showed the plume hasn't reached typical obstacles by then. In `results/scene_check.json`, each check group has 8 scenes. Smoke first touches an obstacle by frame 49 at the latest in the train group and by frame 58 in the `test_b` group, inside the window. The `test_c` low side reaches obstacles later, and has two check groups:
+
+| Group | What it is | First touch | Scenes first touching after frame 70 |
+|---|---|---|---|
+| `test_c_low_side` | Physics sampled as in the split | Frames 40 to 79 | 2 of 8 (frames 71 and 79) |
+| `test_c_low_corner` | Geometry from the split, with buoyancy and strength both set to the bottom of their ranges. A deliberately extreme setting, not a sample of the split | Frames 59 to 92 | 6 of 8 |
+
+A scene first touching after frame 70 has no obstacle contact at all in the primary window. This doesn't extend the horizon: the set is there to test an unfamiliar flow, and its results are reported per side.
 
 **What this metric can't show.** The window runs from `t=0.8` to `t=2.8`. In `results/solver_check.json`, the 128×128 solver stops being clearly closer to 256×256 than 64×64 is, at about `t=1` on a hard-edged inflow, and at about `t=2` on a smooth one. Grid order is reversed later still in that one plume, and 256×256 was not compared with a finer grid. So past about `t=1`, the reference is one realisation of a chaotic flow, not pointwise truth. The primary metric then measures agreement with that realisation, and an error near the level reached by two equally good solvers doesn't mean the prediction is physically wrong. To give that level a figure, the coarse 128×128 solver's error against the reference is reported on the same axes, and the primary metric is never read without the secondary ones.
 
@@ -38,31 +49,67 @@ For the longer range, rollouts run on past frame 70 under the same blow-up rule.
 
 ## Does doubt predict error?
 
-- **Evidence measure.** Spearman rank correlation between the frame's doubt score and its per-frame error, computed **within each fixed rollout time**, then averaged across rollout times with equal weight. Scenes are resampled whole for the confidence interval. This is the figure that counts as evidence, since error and doubt can both rise with time alone.
-- **Pooled correlation** over all frames and rollout times is also reported, and is labelled as not being evidence by itself.
-- **No-ensemble comparison.** The same measures for the divergence of a single model's output.
-- **Rise on unfamiliar sets.** Doubt on Tests B and C against Test A, compared at matching rollout times.
+Every measure in this section and the next uses the evidence rollouts at frames 21 to 70, the 50 rollout times of the primary window, unless it says otherwise. The same figures at frames 21 to 120, and the same figures on independent rollouts, are also reported, labelled as secondary, and don't count as evidence.
+
+- **Evidence measure.** At each rollout time, the Spearman rank correlation across a set's scenes between the frame's doubt score and its per-frame error. Tied values share their average rank. The figure is the mean over rollout times, with equal weight, and has a 95% bootstrap interval. This is the figure that counts as evidence, since error and doubt can both rise with time alone. `test_c` has this figure per side and pooled.
+- **An undefined time.** Where every doubt score or every error at a rollout time is tied, as when every scene is capped, the correlation is undefined. That time leaves that average, in that resample too, and the number of such times is stated. If none remain, the set is reported as having no figure.
+- **Pooled correlation** over all frames and rollout times of the same rollouts is also reported, and is labelled as not being evidence by itself.
+- **No-ensemble comparison.** The same measures for a single-model rollout with no hand-off, using the lowest-seed member: the root mean square divergence of its output over fluid cells, against that rollout's own per-frame error.
+- **Rise on unfamiliar sets.** At each rollout time, the chance that a frame from Test B or C has higher doubt than one from Test A, counting ties as half. The figure is the mean over rollout times, with scenes resampled within each set. The median doubt at each time is also plotted.
+
+**Non-finite doubt.** A doubt score counts as non-finite if any fluid cell of its doubt map is NaN or infinite, under any aggregation. The same goes for the no-ensemble signal.
+
+- In every ranking, it counts as positive infinity: above any finite score and tied with other non-finite scores. So Spearman, AUROC, calibration and risk-coverage all keep the frame. Nothing is dropped.
+- Such a frame also normally has an error of 10 under the blow-up rule, so it adds agreeing high ranks. The number of these frames is given beside each figure, so that a correlation resting on them can be seen.
+- In a hand-off policy, it triggers a hand-off, as the hand-off rules below state.
+
+**Calibration.** Ten bins, with edges at the deciles of doubt on validation's evidence rollouts, frozen with the threshold. Non-finite scores go in the top bin, and equal edges merge. Each bin reports its number of frames, its mean per-frame error and its share of bad frames, pooled over rollout times, and is labelled as not being evidence by itself.
+
+**Risk-coverage.** At coverage from 0.1 to 1.0 in steps of 0.1, keep the frames with the lowest doubt, and report their mean per-frame error. Tied frames are kept or left out together, and the achieved coverage is reported. It is computed both pooled and within each rollout time, then averaged across times with equal weight. Neither is evidence by itself.
 
 ## Bad-frame threshold
 
-A frame is **bad** when its per-frame error is above the 80th percentile of per-frame errors for frames 21 to 70 of ensemble-mean rollouts with no hand-off, pooled over validation scenes. That value is frozen on validation and written to `results/handoff_selection.json`. It is then used unchanged for AUROC, calibration and risk-coverage on every test set.
+A frame is **bad** when its per-frame error is above the 80th percentile, with linear interpolation, of per-frame errors for frames 21 to 70 of validation's evidence rollouts, pooled over scenes. A frame at the cap of 10 is always bad, even if that percentile reaches 10. That value is frozen on validation and written to `results/handoff_selection.json`. It is then used unchanged for AUROC, calibration and risk-coverage on every test set.
 
-Within-time AUROC is reported only at rollout times with at least 5 bad and 5 good frames in the set, and the number of times excluded is stated. If a test set has no bad frames, or all bad frames, at any time, it is reported as such, not imputed.
+AUROC uses the evidence rollouts, with doubt as the score and non-finite doubt ranked as above. Ties count as half. Within-time AUROC is the mean over rollout times with at least 5 bad and 5 good frames in the set, and the number of times excluded is stated. If a test set has no bad frames, or all bad frames, at any time, it is reported as such, not imputed. Pooled AUROC is also reported, and is labelled as not being evidence by itself.
+
+## Hand-off rules
+
+These apply to doubt-based hand-off and to both baselines, in selection and on test sets.
+
+- **Trigger.** Each frame's doubt score comes from the ensemble step into that frame. A hand-off policy with a finite threshold hands off if the score is above `tau` or non-finite.
+- **What the solver starts from.** The ensemble's output for the frame that triggered is thrown away. The solver starts from the frame before, and makes `handoff_frames` frames, starting with the one that triggered. The ensemble then resumes from the solver's last frame. A hand-off therefore never starts from a non-finite state.
+- **Forced hand-offs.** A fixed-schedule or random policy whose ensemble output is non-finite hands off in the same way, outside its schedule. A rescue that any system could perform is then not credited to doubt alone. Forced solver frames count towards the solver share, and each policy's number of forced hand-offs is reported.
+- **A failing solver.** If the solver's own output isn't finite, that frame and all later ones count as blown up, and no further hand-off is tried in that rollout.
+- **Solver share** is the fraction of frames in frames 21 to 70, across all of a set's scenes, produced by the solver. A hand-off running past frame 70 counts only inside the window.
 
 ## Hand-off selection and the frozen threshold
 
-Chosen on validation only, then written to `results/handoff_selection.json` and committed before any test split opens:
+Chosen on validation only, then written to `results/handoff_selection.json` and committed before any test split opens. The evidence measure can't vary with `handoff_frames`, because evidence rollouts have no hand-off, so it decides aggregation alone. The steps run in this order:
 
-- `handoff_frames` from `{2, 5, 10}`, and doubt aggregation from `{mean, p95, p99}`. First by highest within-time Spearman correlation. Ties, meaning overlapping confidence intervals, go to the lower primary error at a solver share of 25%.
-- **Threshold `tau`:** the value giving the lowest primary error with a solver share at or below 25% on validation. If no value reaches that share, it is the value with the share closest below 25%, and this is reported.
+1. **Aggregations left in.** For `mean`, `p95` and `p99`, compute the evidence measure on validation. The one with the highest value leads. Another stays in if the 95% bootstrap interval of its paired difference from the leader includes zero. Each is compared only with the leader, so the result is a single set however the intervals overlap.
+2. **Candidate thresholds.** For each aggregation left in, the 50th, 60th, 70th, 80th, 90th, 95th, 98th and 99th percentiles of its doubt scores on validation's evidence rollouts at frames 21 to 70, pooled. A percentile that isn't finite is left out, and equal values count once. There is one further candidate, **never**: the ensemble with no hand-off, whatever its doubt. This has a solver share of 0, with no forced hand-offs.
+3. **Runs.** Each aggregation left in, each `handoff_frames` from `{2, 5, 10}`, and each finite candidate, as hand-off rollouts on all validation scenes, recording the primary set score and the solver share.
+4. **Choice.** Among runs with a solver share at or below 25%, the lowest primary set score, compared after rounding to 6 decimal places. Remaining ties go to the lower solver share, then in the order `mean`, `p95`, `p99`, then to the smaller `handoff_frames`.
 
-Solver share is the fraction of frames in frames 21 to 70 produced by the solver.
+**never** is always eligible, so a choice always exists. If it wins, the hand-off gave no gain on validation at this budget. That is written down, reported as a finding, and carried to the test sets unchanged.
 
 ## Baseline budget
 
-The frozen `tau` runs unchanged on each test set. The solver share it actually uses there, across that set's scenes, sets the budget for the fixed-schedule and random baselines on that set. Each baseline's share must land within 1 percentage point of the budget, and the achieved share is reported.
+The frozen `tau` runs unchanged on each test set. The solver share it actually uses there, across that set's scenes, sets the budget for the fixed-schedule and random baselines on that set. On `test_c`, each side has its own budget and baselines. Pooled `test_c` figures combine the two sides' runs, so that the pooled budget matches as well.
 
-The random baseline is run with 5 fixed seeds per scene and averaged. Sweep curves on test sets are descriptive and choose nothing. All figures include the cost of every ensemble member.
+Both baselines use the frozen `handoff_frames`, and their schedules are worked out from the budget alone, before any rollout runs:
+
+- **Fixed schedule.** A hand-off every `period` frames, with `period` at least `handoff_frames`. The first hand-off in the set's scene number `i` of `n` starts `floor(i * period / n)` frames after frame 21, so that the scenes aren't all handed off on one frame. Of the possible periods, the one with the scheduled share nearest the budget is used, and ties go to the longer period.
+- **Random.** At each frame the ensemble would produce, a hand-off starts with chance `rate`, from a stream fixed per scene and seed, with 5 fixed seeds per scene, and the results averaged. `rate` is found by bisection on those streams, to the scheduled share nearest the budget.
+
+**Matching.** A baseline is matched if its achieved share, forced hand-offs included, is within 1 percentage point of the budget. The achieved share is always reported.
+
+**When it can't match.** Long hand-offs make the possible fixed-schedule shares coarse at high budgets. If the nearest scheduled share is more than 1 point away, the nearest schedule below the budget and the nearest above it both run, and both are reported as unmatched. If forced hand-offs push a matched schedule outside the 1 point, it stays as it is and is reported as unmatched. A budget of 0 means there's no hand-off to compare, and this is stated in place of a comparison.
+
+**Comparison.** Doubt-based hand-off against a baseline is the paired difference in scene score over the set, with a 95% bootstrap interval. Doubt beats a baseline only if that interval lies wholly below zero, and only against a baseline whose achieved share is matched or above the budget. One below the budget has had less solver time, so a win against it alone isn't a win.
+
+Sweep curves on test sets are descriptive and choose nothing. All figures include the cost of every ensemble member.
 
 ## Test-set policy
 
@@ -71,11 +118,23 @@ The random baseline is run with 5 fixed seeds per scene and averaged. Sweep curv
 - `--final` is run once, after all code is committed and that commit's hash is added to this file. Any later bug fix is logged in `docs/BUILD_LOG.md` with what changed and the numbers before and after, and the first numbers stay on record.
 - **Exception, before any model exists:** the data spot-check after generation opens test splits to render a sample scene from each and to confirm stats, NaN count and manifest. It is an integrity check on the data. Nothing about the data, the ranges or the models is tuned from it. Should it find a defect, the fix and regeneration are logged, and the new data's manifest is committed.
 
+## Travel in the spot-check
+
+A step's largest travel can pass the thinnest wall, 10.24 cells at 256×256, when a late obstacle lands in a fast flow, and semi-Lagrangian advection could then carry smoke across a wall. `stats.scenes_over_thinnest_wall` in the manifest names any such scene, per split. The spot-check states the largest travel in each split and its margin to the wall, then applies this rule:
+
+1. **No scene named:** this item passes.
+2. **Any scene named:** the data isn't accepted until each one has been compared. Restart the scene from the frame in `stats.travel_frame_by_scene`, as `scripts/check_travel.py` does, and continue for 5 frames at `dt=0.01` and `dt=0.005` from one shared state. Its figure is the largest root mean square density difference over fluid cells, relative to root mean square density.
+3. **Controls:** the same figure for the 3 scenes in that split with the lowest largest travel, each from its own frame.
+4. **Pass or fail:** a named scene passes if its figure is at most twice the largest control's. It stays in the set, and its figure and a rendering of the frames around the spike are logged.
+5. **On a failure:** this is a defect. Generation is redone for all splits at `dt=0.005`, with 8 solver steps per frame, and is logged under the exception above. No scene is dropped or redrawn over its travel.
+
+Twice is the build's choice, set before any scene above the wall has been seen. A step-size difference over the whole field can miss a small local leak, so a pass means there's no large effect, not that there's no leak.
+
 ## Reporting `test_c`
 
 Every `test_c` figure is given for the low side, the high side, and pooled. The realised number of scenes per side is in the manifest. A scene's side comes from its buoyancy. Input amplitude and flow regime leave their ranges together in this set, so a rise in doubt can't be divided between them (`docs/DECISIONS.md` B20).
 
-The low side's plumes reach obstacles late or within the window's later part, so its figures say more about an unfamiliar flow than about flow around obstacles. This is stated beside them.
+The low side's plumes reach obstacles late in the window, or after it. In the check groups under "Horizon", 2 of 8 sampled scenes and 6 of 8 corner scenes first touch after frame 70, so those have no obstacle contact in the window at all. Its figures therefore say more about an unfamiliar flow than about flow around obstacles, and this is stated beside them. The report gives the number of low-side scenes with no contact by frame 70 in the set itself, using the check groups' rule on the stored reference: density above 0.01 in a fluid cell next to the obstacle. These scenes aren't dropped.
 
 ## Late obstacles
 
@@ -95,4 +154,5 @@ The result that answers the project's question is the primary metric of doubt-ba
 | Date | Change | Reason |
 |---|---|---|
 | 2026-11-03 | First version | |
+| 2026-11-03 | Stated the rollouts and frames of the evidence measure, calibration, risk-coverage and AUROC. Added the rules for non-finite doubt, the trigger, a candidate grid for `tau`, a selection order, baseline schedules, a rule for unmatched budgets, the comparison, and travel above the thinnest wall. Gave both `test_c` low-side check groups | Review before any data or model existed: results could still have been chosen after being seen. `docs/DECISIONS.md` B31 to B35 |
 | | Code commit for `--final`: to be recorded in Task 9 | |
