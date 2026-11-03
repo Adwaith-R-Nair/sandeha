@@ -1,14 +1,14 @@
 # Sandeha: Testing Whether Ensemble Doubt Should Decide When a Neural Smoke Simulator Calls a Solver
 
-**Adwaith R Nair.** Course report draft, 2026-11-04.
+**Adwaith R Nair.** Course report, 2026-11-04.
 
-Every number here is copied from the file in `results/` named beside it. `docs/RESULTS.md` has the full tables. Lower is better for every score. Brackets are 95% bootstrap intervals over whole scenes.
+Every number here is copied from the file in `results/` named beside it. `docs/RESULTS.md` has the full tables. Lower is better for every score. Brackets are 95% bootstrap intervals over whole scenes, or over whole trajectories in section 5.6.
 
 ## Abstract
 
 Neural simulators are fast, but they can drift away from the true flow and give no warning. This project trained five small U-Nets to simulate 2D smoke around obstacles, used their disagreement as a doubt signal, and handed off to a conventional solver for a few frames when doubt passed a threshold. The rules were preregistered, the threshold was frozen on validation, and the test run happened once.
 
-The main idea did not work. Doubt-based hand-off did not beat a fixed or random schedule at equal solver budget on any test set. On unseen shapes, the set it was meant for, it was significantly worse than the fixed schedule, 0.2881 against 0.2652, a difference of 0.0229 [0.004, 0.041]. An oracle that used the true error was no better than doubt on familiar scenes or unseen shapes. Doubt does correlate with error at a given rollout time, but on unseen shapes a divergence signal with no ensemble scored higher, 0.676 [0.537, 0.755] against 0.522 [0.286, 0.673], with overlapping intervals and no paired interval saved. The ensemble is about 14 times faster than this project's own reference solver, and more accurate than a coarse solver on familiar scenes and, in the primary window, on unseen shapes, but not on either side of the out-of-range set. This is a small test on generated 2D data, and it claims no new science.
+The main idea did not work. Doubt-based hand-off did not beat a fixed or random schedule at equal solver budget on any test set. On unseen shapes, the set it was meant for, it was significantly worse than the fixed schedule, 0.2881 against 0.2652, a difference of 0.0229 [0.004, 0.041]. An oracle that used the true error was no better than doubt on familiar scenes or unseen shapes. Doubt does correlate with error at a given rollout time, but on unseen shapes a divergence signal with no ensemble scored higher, 0.676 [0.537, 0.755] against 0.522 [0.286, 0.673], with overlapping intervals and no paired interval saved. The ensemble is about 14 times faster than this project's own reference solver, and more accurate than a coarse solver on familiar scenes and, in the primary window, on unseen shapes, but not on either side of the out-of-range set. A separate test of doubt alone, on 9 test trajectories of a published simulation benchmark, gave a within-time Spearman of 0.820 [0.494, 0.910], against 0.186 [-0.221, 0.501] for the no-ensemble signal. That flow is different, has no hand-off and isn't measured data, so it doesn't change the main result. The main test is small and on generated 2D data, and the project claims no new science.
 
 ## 1. Introduction
 
@@ -153,6 +153,23 @@ Source: `results/exp_accuracy.json`.
 
 Without the divergence penalty or without pushforward, scores were worse than a full member by 0.033 to 0.097 (`results/exp_ablation.json`). Each of those is one seed with a shorter 25-minute training, so this isn't only the effect of what was removed. More members help a little: on `test_b`, sizes 2, 3 and 5 score 0.327, 0.312 and 0.308. No ablation ran hand-off.
 
+### 5.6 Doubt on a published simulation benchmark
+
+This track asks only the first question of section 1, on data this project didn't generate: `turbulent_radiative_layer_2D` from The Well [7], for which the dataset card asks for a citation of Fielding et al. [8]. It is a published simulation benchmark, not measured data. The data licence is CC-BY-4.0, and the dataset is at https://huggingface.co/datasets/polymathic-ai/turbulent_radiative_layer_2D. It has no hand-off, because the project has no solver for that physics.
+
+A separate ensemble of 3 U-Nets was trained on the official split. The doubt score, the 99th percentile of the doubt map, was chosen on the official validation split (`results/well_selection.json`). The test run happened once, on 9 trajectories, one per cooling time.
+
+| Frames | Doubt, within-time Spearman | No-ensemble divergence signal |
+|---|---|---|
+| 21 to 70, primary | 0.820 [0.494, 0.910] | 0.186 [-0.221, 0.501] |
+| 21 to 100, secondary | 0.467 [0.142, 0.643] | -0.208 [-0.466, 0.059] |
+
+Source: `results/exp_well.json`.
+
+In the primary window, doubt correlated with error at a given time, with the whole interval above zero. Within-time AUROC has no value, since 9 trajectories can't give the 5 bad and 5 good frames each time needs. Calibration isn't steady: the highest of ten doubt bins had a mean error of 0.583, against 1.115 for the bin below it. The two primary intervals overlap slightly, no paired interval was saved, and each signal was scored on its own rollout. The cooling time isn't a model input, so doubt may partly be sorting flows by cooling time, which wasn't tested.
+
+On `test_b` the divergence signal scored higher than doubt, and here doubt did. This doesn't reverse the `test_b` result. The flow is different and compressible, so its true velocity divergence isn't zero, and the track also differs in ensemble size, doubt score and sample size. These results don't say which signal to prefer on another flow.
+
 ## 6. Discussion: why hand-off fell short
 
 **This section is post-hoc and exploratory.** It was chosen after the results were seen, it uses the same test sets, its intervals aren't corrected for the comparisons tried, and confirming it needs new data. It ran no new rollouts and opened no test split. Every number is in `results/posthoc_analysis.json`.
@@ -175,17 +192,12 @@ Chaos as a cause of error staying after a hand-off can't be settled, because sav
 - **2D and simulated.** Nothing here transfers to 3D or to real smoke.
 - **One machine.** Times in milliseconds are single measurements on one laptop GPU.
 - **Typed numbers.** The text in this report and the analysis in `docs/RESULTS.md` is typed, not generated, so it has to be checked again if a result file changes.
-- **Open checks.** The last recorded full test run is 321 passed at commit `dd78b8d`, and later commits haven't had one. Release `v1.0` of the weights isn't published, so the README's demo command doesn't work from a fresh clone, and the clean-clone check hasn't been run.
+- **The public track is very small.** It has 9 test trajectories, from a published simulation, with no hand-off.
+- **Test coverage.** The last recorded test run was on a fresh clone at commit `9c4bac7`, with 573 passed and 1 skipped. It left out `tests/data/test_travel.py`, which wasn't rerun there. The same check installed the project, unpacked the weights from release `v1.0` and started the trained demo.
 
 ## 8. Conclusion
 
-Under rules fixed in advance, this threshold rule on this doubt signal didn't earn its solver time on small 2D smoke. It lost to a fixed schedule on unseen shapes and beat nothing on any other set. Doubt correlates with error at a given time, but it doesn't warn of unfamiliar shapes and isn't shown to be better than a simple divergence signal. The ensemble is a fast approximation of this project's own solver, and that holds separately from the hand-off result. The project can't claim that doubt-based hand-off works, or that the post-hoc reasons are proven. It also doesn't show that doubt-based hand-off can never work, since other signals, budgets per scene and other hand-off lengths weren't tested.
-
-## PUBLIC TRACK PENDING
-
-**This section holds no results.** `results/exp_well.json` doesn't exist yet, so nothing in this report says anything about the public dataset. The track will measure doubt, with 3 members, on `turbulent_radiative_layer_2D` from The Well [7], and the dataset card asks for a citation of Fielding et al. [8]. It is a published simulation benchmark, not physical measurement, and it has no hand-off because the project has no solver for that physics. The data licence is CC-BY-4.0, and the dataset is at https://huggingface.co/datasets/polymathic-ai/turbulent_radiative_layer_2D.
-
-To be filled in from `results/exp_well.json` when it exists: within-time Spearman and AUROC of doubt on the official test split, the same for the no-ensemble signal, and whether doubt predicted error there.
+Under rules fixed in advance, this threshold rule on this doubt signal didn't earn its solver time on small 2D smoke. It lost to a fixed schedule on unseen shapes and beat nothing on any other set. Doubt correlates with error at a given time, but it doesn't warn of unfamiliar shapes and isn't shown to be better than a simple divergence signal. The ensemble is a fast approximation of this project's own solver, and that holds separately from the hand-off result. The project can't claim that doubt-based hand-off works, or that the post-hoc reasons are proven. It also doesn't show that doubt-based hand-off can never work, since other signals, budgets per scene and other hand-off lengths weren't tested. On the published benchmark, doubt also correlated with error at a given time, on 9 test trajectories of a different flow. That doesn't bear on hand-off.
 
 ## References
 

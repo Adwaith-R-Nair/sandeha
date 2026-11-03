@@ -12,22 +12,22 @@ The main idea did not work. **Handing off to the solver when doubt was high did 
 - The ensemble is about 13 to 17 times faster than the reference solver, with its full cost counted. It is more accurate than the coarse solver on `test_a` and, inside the primary window, on `test_b`. It is not more accurate on either side of `test_c`.
 - An oracle that knew the true error was no better than doubt on `test_a` and `test_b`. So the weak link is not only the doubt signal. On `test_b` the oracle also trailed the fixed schedule, 0.2981 against 0.2652. One interpretation of those descriptive figures, not a tested finding, is that on `test_b` handing off when the current frame looks bad was a poor way to spend solver time. It doesn't carry to the other sets. On `test_a` the oracle is nominally ahead of fixed, 0.2446 against 0.2507. On the high side of `test_c` it scored 0.3959, lower than fixed (0.4112 and 0.4190), random (0.4179) and doubt (0.4100).
 - The reasons given below come from analysis after the fact, on the same test sets. They are suggestions, not findings that have been confirmed.
-- The public-dataset results do not exist yet. See "PUBLIC TRACK PENDING" at the end of this file.
+- On a published simulation benchmark, with 9 test trajectories and no hand-off, doubt's within-time Spearman was 0.820 [0.494, 0.910], and the no-ensemble signal's was 0.186 [-0.221, 0.501]. That is a different flow, and it doesn't change the hand-off result. See "Public dataset" at the end of this file.
 
 ## Design section 6.5, item by item
 
 | Item | Kind | Did it hold? |
 |---|---|---|
-| All solver tests pass, and test sets stayed locked | Must hold | **Yes, with one check still to repeat.** The tests were not rerun on the last commit |
+| All solver tests pass, and test sets stayed locked | Must hold | **Yes.** They passed on a fresh clone at `9c4bac7`. That run left out `tests/data/test_travel.py`, which isn't a solver test |
 | Every figure regenerates from a command, and every number traces to a saved run | Must hold | **Yes, with limits** listed below |
-| Speed and accuracy experiments completed and reported honestly | Must hold | **Yes** for the main track. The public track is pending |
+| Speed and accuracy experiments completed and reported honestly | Must hold | **Yes**, for the main track and for the public track, which measures doubt only |
 | The AI beats the coarse 128×128 solver on accuracy, for the same compute time | Hope | **Partly.** Yes on `test_a`. Yes on `test_b` in the primary window, but not at longer range. No on `test_c` |
 | The AI is meaningfully faster than the reference solver, ensemble cost included | Hope | **Yes** for the ensemble alone. Hand-off gives much of that back, and on the high side of `test_c` it is slower than the reference |
 | With the threshold frozen on validation, doubt-based hand-off beats fixed and random schedules at the same solver budget on Test B | Hope | **No.** It lost to the fixed schedule, and did not beat random |
 
 ### Must hold: solver tests and locked test sets
 
-**Solver tests.** The last recorded full run is 321 passed at commit `dd78b8d` (`BUILD_LOG.md`). `src/sandeha/physics/solver.py` has not changed since `2b2df8a`, before that run. The solver tests were not rerun for this write-up, because they need the GPU and the GPU is in use for public-track training. Run on the CPU they stop with "No CUDA GPUs are available", which says nothing about the solver. They must be run once more when the GPU is free.
+**Solver tests.** The last recorded test run was on a fresh clone at commit `9c4bac7`: 573 passed and 1 skipped (`BUILD_LOG.md`). It left out `tests/data/test_travel.py`, which wasn't rerun there. That file was in the full run at `dd78b8d`, 321 passed, and it changed afterwards at `446d45f`, so `BUILD_LOG.md` has no run of its current version. `src/sandeha/physics/solver.py` has not changed since `2b2df8a`.
 
 **Locked test sets.** The hand-off choice was made on validation and committed in `3a16f42`, before any test split opened. `--final` ran once, from 19:56 on 2026-11-03 to 01:02 on 2026-11-04, and exited with 0 (`runs/jobs.log`, which isn't tracked). No rollout was repeated afterwards, and the post-hoc work opened no test split. Three things are the known exceptions or limits:
 
@@ -436,26 +436,40 @@ Later frames don't rescue doubt. Over frames 71 to 120 on `test_b`, mean error w
 
 ## What the project can and can't claim
 
-It can claim that a small neural ensemble runs this 2D smoke about 13 to 17 times faster than this project's reference solver, that it is more accurate than the coarse solver on familiar scenes and in the primary window on unseen shapes, and that its doubt correlates with error at a given time. It can also claim a clean negative result, measured under rules fixed in advance: this threshold rule on this doubt signal didn't earn its solver time.
+It can claim that a small neural ensemble runs this 2D smoke about 13 to 17 times faster than this project's reference solver, that it is more accurate than the coarse solver on familiar scenes and in the primary window on unseen shapes, and that its doubt correlates with error at a given time. It can also claim a clean negative result, measured under rules fixed in advance: this threshold rule on this doubt signal didn't earn its solver time. On the public dataset, it can claim that doubt correlated with error at a given time on those 9 test trajectories.
 
-It can't claim that doubt-based hand-off works, that doubt warns of unfamiliar shapes, or that the post-hoc reasons are proven. None of this is new science. It's a small test on 2D smoke of a question that recent research already explores.
+It can't claim that doubt-based hand-off works, that doubt warns of unfamiliar shapes, that the post-hoc reasons are proven, or that doubt beats the divergence signal in general. None of this is new science. It's a small test on 2D smoke of a question that recent research already explores.
 
-## PUBLIC TRACK PENDING
+## Public dataset: doubt on a published simulation benchmark
 
-**This section is a placeholder and holds no results.** `results/exp_well.json` doesn't exist yet, so nothing in this file says anything about the public dataset. Every number above is from the project's own generated data.
+Every number in this section is from `results/exp_well.json`, unless another file is named. Every number above this section is from the project's own generated data.
 
-To be filled in from `results/exp_well.json` when it exists, with no figure typed from memory:
+**What this is.** `turbulent_radiative_layer_2D` from The Well (Ohana et al.; Fielding et al. 2020) is a published simulation benchmark. It isn't measured data. A separate ensemble of 3 U-Nets, seeds 0 to 2, ran once on the official test split, which has 9 trajectories, one per cooling time. Intervals resample those 9 trajectories. This track tests doubt only. It has no solver, so it can't say anything about hand-off.
 
-| Item | Value |
-|---|---|
-| Dataset | `turbulent_radiative_layer_2D` from The Well (Ohana et al.; Fielding et al. 2020), a published simulation benchmark. It isn't physical measurement |
-| Ensemble | 3 members |
-| Within-time Spearman, doubt, with interval | PENDING |
-| Within-time AUROC | PENDING |
-| Calibration and risk-coverage | PENDING |
-| No-ensemble signal, same measures | PENDING |
-| Did doubt predict error on this dataset? | PENDING |
+**Choices made on validation (`results/well_selection.json`).** The 99th percentile of the doubt map, which had the highest within-time Spearman of the three, at 0.833 [0.559, 0.912], against 0.714 for the mean and 0.761 for the 95th percentile. The bad-frame threshold is an error of 0.791.
 
-This track tests doubt only. It has no solver, so it can't say anything about hand-off.
+| Measure | Doubt, on the ensemble's rollout | No-ensemble divergence signal, on one member's rollout |
+|---|---|---|
+| Within-time Spearman, frames 21 to 70. The evidence figure | **0.820 [0.494, 0.910]** | 0.186 [-0.221, 0.501] |
+| Within-time Spearman, frames 21 to 100. Secondary | 0.467 [0.142, 0.643] | -0.208 [-0.466, 0.059] |
+| Within-time AUROC | None. All 50 times excluded | None. All 50 times excluded |
+| Pooled Spearman, frames 21 to 70. Not evidence | 0.312 | 0.608 |
+| Pooled AUROC, frames 21 to 70. Not evidence | 0.743 | 0.725 |
+| Bad frames, frames 21 to 70 | 111 of 450 | 82 of 450 |
+| Mean error, frames 21 to 70 | 0.583 | 0.545 |
+| Blown-up or capped frames, frames 21 to 70 | 0 | 0 |
+
+- **Within-time AUROC has no value.** Each time needs 5 bad and 5 good frames, and 9 trajectories can't give that.
+- **Calibration isn't steady.** Over the ten doubt bins, lowest first, mean error is 0.412, 0.366, 0.362, 0.480, 0.569, 0.628, 0.648, 0.885, 1.115 and 0.583. The top bin holds 39 frames, and its bad share falls to 0.205 from 0.615 in the bin below. The divergence signal's bins run 0.160, 0.280, 0.354, 0.487, 0.750, 0.662, 0.713, 1.065, 0.704 and 0.689, which also isn't steady.
+- **Risk-coverage, within time.** Keeping the lowest-doubt 1 of 9 trajectories at each time gives a mean error of 0.342, and keeping all gives 0.583. The same step for the divergence signal gives 0.580 and 0.545, so it gains nothing. The pooled curves favour low divergence, 0.147 at 10% coverage against 0.545 at full coverage, and doubt gives 0.421 and 0.583. Pooled figures mix in error growing with time, and aren't evidence.
+
+**Did doubt predict error on this dataset?** On the evidence figure, yes: in the primary window the whole interval is above zero. It is weaker over 100 frames. The interval is wide, because there are only 9 trajectories.
+
+**The limits.**
+
+- Each time's correlation is across 9 flows with 9 different cooling times, and the cooling time isn't a model input. So doubt may partly be sorting flows by cooling time and not spotting bad moments. That wasn't tested. On the main track, post-hoc, doubt behaved mostly like a property of the scene.
+- The two primary intervals overlap slightly, at 0.494 to 0.501. No paired interval was saved, and each signal is scored on its own rollout against its own error.
+
+**The contrast with `test_b`.** On `test_b` the divergence signal scored higher, 0.676 [0.537, 0.755] against 0.522 [0.286, 0.673] (`exp_doubt.json`). Here doubt did. This doesn't reverse the `test_b` result. It is a different flow, and compressible, so its true velocity divergence isn't zero, and the models trained with no divergence penalty (`DECISIONS.md` B51). One possibility, not tested, is that divergence is a weaker sign of a fault for that reason. The track also differs in members (3 against 5), doubt score (99th percentile against 95th) and sample size (9 trajectories against 30 scenes). On the high side of `test_c`, doubt scored higher too, 0.388 against 0.174. So neither signal led everywhere, and these results don't say which signal to prefer on another flow. The error figures of the two tracks use different fields and normalisation, so they shouldn't be compared.
 
 **Dataset and credit.** `turbulent_radiative_layer_2D`, from The Well (Ohana et al., *The Well: a Large-Scale Collection of Diverse Physics Simulations for Machine Learning*, NeurIPS 2024, arXiv:2412.00568). The dataset card asks for this citation: Fielding et al., *Multiphase Gas and the Fractal Nature of Radiative Turbulent Mixing Layers*, The Astrophysical Journal Letters 894(2), L24, 2020, DOI 10.3847/2041-8213/ab8d2c. The data licence is CC-BY-4.0. Dataset link: https://huggingface.co/datasets/polymathic-ai/turbulent_radiative_layer_2D. Full entries are in `docs/REFERENCES.md`.

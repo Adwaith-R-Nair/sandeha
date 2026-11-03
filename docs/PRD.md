@@ -56,9 +56,9 @@ Sandeha is a 2D smoke simulator built around one question:
 
 | Measure | Outcome on 2026-11-04 |
 |---|---|
-| Solver tests pass, and test sets stayed locked | **Yes, with one check still to repeat.** The last recorded full run is 321 passed at `dd78b8d`. The tests weren't rerun on the latest commits, because they need the GPU and it's in use. The solver hasn't changed since before that run. `--final` ran once, and the post-hoc work opened no test split |
+| Solver tests pass, and test sets stayed locked | **Yes.** The last recorded run is 573 passed and 1 skipped, on a fresh clone at `9c4bac7`. It left out `tests/data/test_travel.py`, which isn't a solver test and wasn't rerun there. `--final` ran once, and the post-hoc work opened no test split |
 | Figures regenerate, and numbers trace to a saved run | **Yes, with limits.** Numbers in written text are typed, with their source named beside them. Times in milliseconds are single measurements on one laptop GPU. The limits are listed in `RESULTS.md` |
-| Experiments completed and reported honestly | **Yes** for the main track, weak results included. The public track is pending |
+| Experiments completed and reported honestly | **Yes**, weak results included, for the main track and for the public track, which measures doubt only |
 
 **Hoped for, not guaranteed:**
 
@@ -77,9 +77,8 @@ A hoped-for result that fails is reported as a finding, with analysis of why. Th
 **Other requirements with a measured outcome:**
 
 - **N2:** met in neural mode, at 61.3 frames per second with 5 members against a target of 15 (`results/demo_bench.json`).
-- **N7:** datasets and checkpoints aren't in git. The release of the weights (`v1.0`, `sandeha-weights.tar.gz`) hadn't been published when this was written.
-
-**PUBLIC TRACK PENDING: F7.** `results/exp_well.json` doesn't exist yet, so F7 has no outcome and this document gives no figure for it. Fill this in from that file once it exists.
+- **N7:** datasets and checkpoints aren't in git. The weights are published as release `v1.0`, file `sandeha-weights.tar.gz`.
+- **F7:** met. On 9 test trajectories of a published simulation benchmark, not measured data, doubt's within-time Spearman in frames 21 to 70 was 0.820 [0.494, 0.910], and the no-ensemble signal's was 0.186 [-0.221, 0.501] (`results/exp_well.json`). It has no hand-off, and it is a different flow from the main track, so it doesn't change the outcomes above.
 
 ## Out of scope
 

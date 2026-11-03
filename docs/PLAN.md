@@ -15,8 +15,8 @@
 | Tasks | State |
 |---|---|
 | 1 to 9, 11 and 12 | Done, with results in `RESULTS.md`. `--final` ran once. Doubt-based hand-off didn't beat the baselines, and that is reported as a finding |
-| 10, public track | **PUBLIC TRACK PENDING.** Code is written and training is under way. `results/exp_well.json` doesn't exist yet |
-| 13, hand-over | Done: references, `HLD`, `LLD`, `DECISIONS`, `BUILD_LOG`, `TEST_PLAN`, `RESULTS`, `MODEL_CARD`, `VIVA_GUIDE` and `README`. `REPORT.md` is drafted. Open: the clean-clone check, the audit, publishing the weights as release `v1.0`, and a full test run on the GPU |
+| 10, public track | Done. One test run on 9 trajectories, in `results/exp_well.json`, and reported in `RESULTS.md` |
+| 13, hand-over | Done: references, `HLD`, `LLD`, `DECISIONS`, `BUILD_LOG`, `TEST_PLAN`, `RESULTS`, `MODEL_CARD`, `VIVA_GUIDE`, `README` and `REPORT.md`, the document audit, and the weights as release `v1.0`. The clean-clone check passed at `9c4bac7`, with 573 tests passed and 1 skipped. Left out of that run: `tests/data/test_travel.py` |
 
 ## Global Constraints
 

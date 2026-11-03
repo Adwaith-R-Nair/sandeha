@@ -1,16 +1,14 @@
 # Sandeha
 
-Sandeha (Sanskrit for "doubt") is a neural 2D smoke simulator built to test one idea: run five networks, treat their disagreement as doubt, and call a conventional physics solver when doubt is high. **The idea did not work as hoped.** With the rules fixed in advance and the threshold frozen on validation, handing off by doubt did not beat a fixed or random schedule at the same solver budget on any test set. On unseen shapes it was worse than the fixed schedule, scoring 0.2881 against 0.2652, where lower is better. An oracle that hands off using the true error was no better than doubt on familiar scenes or unseen shapes. Other parts held, with limits. Doubt does track error at a given rollout time, but on unseen shapes a divergence signal with no ensemble scored higher, 0.676 [0.537, 0.755] against 0.522 [0.286, 0.673]. Those intervals overlap, and no paired interval was saved. The ensemble is about 13 to 17 times faster than this project's own reference solver, with all five members counted. It is more accurate than the coarse solver on familiar scenes and, inside the primary window, on unseen shapes, but not on either side of the out-of-range set. This is a small project on generated 2D data, and it claims no new science.
+Sandeha (Sanskrit for "doubt") is a neural 2D smoke simulator built to test one idea: run five networks, treat their disagreement as doubt, and call a conventional physics solver when doubt is high. **The idea did not work as hoped.** With the rules fixed in advance and the threshold frozen on validation, handing off by doubt did not beat a fixed or random schedule at the same solver budget on any test set. On unseen shapes it was worse than the fixed schedule, scoring 0.2881 against 0.2652, where lower is better. An oracle that hands off using the true error was no better than doubt on familiar scenes or unseen shapes. Other parts held, with limits. Doubt does track error at a given rollout time, but on unseen shapes a divergence signal with no ensemble scored higher, 0.676 [0.537, 0.755] against 0.522 [0.286, 0.673]. Those intervals overlap, and no paired interval was saved. The ensemble is about 13 to 17 times faster than this project's own reference solver, with all five members counted. It is more accurate than the coarse solver on familiar scenes and, inside the primary window, on unseen shapes, but not on either side of the out-of-range set. The main results are from a small project on generated 2D data, and it claims no new science. A separate test of doubt alone, on a published simulation benchmark with 9 test trajectories, gave a within-time Spearman of 0.820 [0.494, 0.910], against 0.186 [-0.221, 0.501] for the no-ensemble signal. That is a different flow, it has no hand-off, and it doesn't change the result above.
 
 ![The demo running the trained ensemble, with smoke on the left and doubt on the right](docs/assets/sandeha-demo.gif)
 
-The recording is of the real system, running live. The demo is not evidence for any result below. The measured results are.
+The recording is of the real system, running live, and it includes physics-only mode. Two stills from it are `docs/assets/doubt-star.png` (by doubt, on a star) and `docs/assets/physics-mode.png` (physics only). Recording slows the demo: by-doubt and physics-only modes showed about 7 and 4 frames per second on screen. Those are readings with recording overhead, not benchmark figures. The demo is not evidence for any result below. The measured results are.
 
 ## Run the demo
 
-**Not available yet from a fresh clone.** Release `v1.0` hasn't been published, so the download in the command below fails today with HTTP 404. The clean-clone check hasn't been run either.
-
-You need [uv](https://docs.astral.sh/uv/) and an NVIDIA GPU with a driver that supports CUDA 13.2. Once the release is published, this one command is meant to install the project, download the trained weights and start the demo:
+You need [uv](https://docs.astral.sh/uv/) and an NVIDIA GPU with a driver that supports CUDA 13.2. This one command installs the project, downloads the trained weights and starts the demo:
 
 ```bash
 uv sync && curl -fL https://github.com/Adwaith-R-Nair/sandeha/releases/download/v1.0/sandeha-weights.tar.gz | tar xz && uv run python scripts/run_demo.py
@@ -18,7 +16,9 @@ uv sync && curl -fL https://github.com/Adwaith-R-Nair/sandeha/releases/download/
 
 Then open `http://127.0.0.1:8000`. It needs no internet once the download has finished.
 
-The weights aren't in git. They are to be published as release `v1.0`, in the file `sandeha-weights.tar.gz`, which unpacks at the repo root. On start-up the demo checks each checkpoint against its SHA-256 in `results/ensemble.json`, and refuses to run on a mismatch.
+This was checked on a fresh clone at commit `9c4bac7`: the install worked, the weights unpacked, and the trained demo started and served the page.
+
+The weights aren't in git. They are published as release `v1.0`, in the file `sandeha-weights.tar.gz`, which unpacks at the repo root and holds the five ensemble checkpoints and `data/normalizer.json`. The public-dataset checkpoints aren't in it. On start-up the demo checks each checkpoint against its SHA-256 in `results/ensemble.json`, and refuses to run on a mismatch.
 
 Useful options for `scripts/run_demo.py`: `--device cpu` runs slowly on purpose, `--members 3` uses fewer members and shows that on the page, and `--port 8001` picks another port. `--random-weights` needs no download, and the page then says that the models are untrained and that nothing shown is a result.
 
@@ -65,7 +65,7 @@ Source: `results/exp_accuracy.json`. Bold marks the better of ensemble and coars
 - The reference timings give about 13 to 17 times faster. Against the longer solver-only runs it is about 13 to 15 times, so "about 14 times" is a fair single figure. The solver is this project's own PyTorch code, not tuned for speed, on one laptop GPU. A tuned solver could narrow the gap, but none was measured.
 - Speed isn't free. Running the solver only scores 0.097 on `test_a` and 0.098 on `test_b`, far below the ensemble's error.
 - Hand-off gives much of the speed back: 67.1 ms per frame on `test_b` under doubt. On the high side of `test_c` it took 257.7 ms, slower than the reference, and scored 0.410 where a continuous solver run scored 0.278.
-- The demo ran in AI mode at 61.3 frames per second with all 5 members, against a target of 15 (`results/demo_bench.json`).
+- The demo ran in AI mode at 61.3 frames per second with all 5 members, against a target of 15 (`results/demo_bench.json`). That run had no solver frames, so it doesn't describe by-doubt or physics-only mode.
 
 ### Does doubt predict error?
 
@@ -89,9 +89,18 @@ Source: `results/exp_doubt.json`. The divergence of one network's output scored 
 - Late hand-offs, the first guess after seeing the results and before the post-hoc analysis, explain little of the loss.
 - Restarting the solver has a real cost. On the high side of `test_c`, a fixed schedule at 99% solver scored 0.411, while one continuous solver run scored 0.278.
 
-## PUBLIC TRACK PENDING
+### Public dataset: doubt on a published simulation benchmark
 
-**This section holds no results.** `results/exp_well.json` doesn't exist yet, so nothing above says anything about the public dataset. The track will measure doubt, with 3 members, on a published simulation benchmark, not physical measurement. It has no hand-off, because the project has no solver for that physics. This section gets filled in from that file once it exists.
+This track measures doubt only, with 3 members, in a single test run. It is a published simulation benchmark, not measured data, and it has only 9 test trajectories. It has no hand-off, because the project has no solver for that physics, so it says nothing about the hand-off result above.
+
+| Frames | Doubt, within-time Spearman | No-ensemble divergence signal, within-time Spearman |
+|---|---|---|
+| 21 to 70, the primary window | 0.820 [0.494, 0.910] | 0.186 [-0.221, 0.501] |
+| 21 to 100, secondary | 0.467 [0.142, 0.643] | -0.208 [-0.466, 0.059] |
+
+Source: `results/exp_well.json`. Within-time AUROC has no value here, since 9 trajectories can't give the 5 bad and 5 good frames each time needs. Calibration isn't steady: the highest of ten doubt bins had a mean error of 0.583, against 1.115 for the bin below it.
+
+On this flow doubt scored higher, where on `test_b` the divergence signal did, 0.676 against 0.522. This is a different flow, with different models and far fewer trajectories, so neither result carries to the other. The primary intervals overlap slightly, and no paired interval was saved. Each cooling time appears in one test trajectory and isn't an input to the models, so doubt may partly be sorting flows by cooling time. That wasn't tested. Details are in `docs/RESULTS.md`.
 
 **Dataset and credit.** `turbulent_radiative_layer_2D`, from The Well (Ohana et al., *The Well: a Large-Scale Collection of Diverse Physics Simulations for Machine Learning*, NeurIPS 2024, arXiv:2412.00568). The dataset card asks for this citation: Fielding et al., *Multiphase Gas and the Fractal Nature of Radiative Turbulent Mixing Layers*, The Astrophysical Journal Letters 894(2), L24, 2020, DOI 10.3847/2041-8213/ab8d2c. The data licence is CC-BY-4.0. Dataset link: https://huggingface.co/datasets/polymathic-ai/turbulent_radiative_layer_2D. Full entries are in `docs/REFERENCES.md`.
 
@@ -122,7 +131,7 @@ uv run python scripts/render_results.py     # rebuilds the generated block in do
 uv run python scripts/make_figures.py       # redraws the result figures from results/
 ```
 
-The last recorded full test run is 321 passed at commit `dd78b8d`. Later commits haven't had a full run yet. The final experiment ran once and must not be repeated, so regenerating results means regenerating from the saved files.
+The last recorded test run was on a fresh clone at commit `9c4bac7`: 573 passed and 1 skipped, leaving out `tests/data/test_travel.py`, which wasn't rerun there. That file was in the full run at `dd78b8d`, and it changed afterwards at `446d45f`. The final experiment ran once and must not be repeated, so regenerating results means regenerating from the saved files.
 
 Long jobs run under a wrapper, which refuses to start without mains power, holds a sleep and lid inhibitor, and logs to `runs/<name>.log` and `runs/jobs.log`:
 

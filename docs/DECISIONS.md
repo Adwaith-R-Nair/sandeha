@@ -441,9 +441,10 @@ Each major decision, the alternatives and the reason. Status is **Default** for 
 
 ### B62: Public-track places are marked until results exist (2026-11-04)
 
-- **Decision:** `RESULTS.md` and `MODEL_CARD.md` each have a section beginning "PUBLIC TRACK PENDING", holding no numbers. Main-track text says that it covers only the project's own generated data.
+- **Decision:** `RESULTS.md` and `MODEL_CARD.md` each have a section marked as pending, holding no numbers. Main-track text says that it covers only the project's own generated data.
 - **Alternatives:** leaving the track out until it finishes, which could read as if it had been dropped.
-- **Reason:** `results/exp_well.json` doesn't exist yet, and no number may be written before its file does.
+- **Reason:** `results/exp_well.json` didn't exist then, and no number may be written before its file does.
+- **Closed 2026-11-04:** the file now exists, and every marked place has been filled in from it.
 
 ## Architecture selection
 

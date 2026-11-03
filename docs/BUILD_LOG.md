@@ -949,3 +949,14 @@ Checked each item against `results/` and git history, then corrected the wording
 
 - `REPORT.md` still isn't written, and release `v1.0` still isn't published.
 - `PREREGISTRATION.md`'s opening line says that the file's commits come before the data manifest and the model code. That holds for 4 of its 6 commits. It wasn't edited, to avoid another change after the run. The viva guide states the full history.
+
+## 2026-11-04: Public track, release and clean-clone check done
+
+Earlier entries in this log that mention pending sections or an unpublished release are kept as dated history. They are now closed.
+
+- **Public track:** `results/exp_well.json` came from the single test run on 9 test trajectories. In frames 21 to 70, doubt's within-time Spearman is 0.820 [0.494, 0.910], and the no-ensemble signal's is 0.186 [-0.221, 0.501]. It is a published simulation benchmark, not measured data, with no hand-off. Every section marked as pending in `README.md`, `docs/RESULTS.md`, `docs/MODEL_CARD.md`, `docs/PRD.md`, `docs/PLAN.md`, `docs/DECISIONS.md`, `docs/REPORT.md` and `docs/VIVA_GUIDE.md` is now filled in from that file.
+- **Release:** `v1.0` is published with `sandeha-weights.tar.gz`, holding the five ensemble checkpoints and `data/normalizer.json`, unpacked at the repo root. The download URL was checked and works.
+- **Clean-clone check, at commit `9c4bac7`:** on a fresh clone, the install worked, the weights unpacked, and the trained demo started and served the page. Tests: 573 passed, 1 skipped. That run left out `tests/data/test_travel.py`. Its last recorded run is in the full run at `dd78b8d`, and it changed afterwards at `446d45f`.
+- **Demo recording:** `docs/assets/` has `sandeha-demo.mp4` and `sandeha-demo.gif`, including physics-only mode, and the stills `doubt-star.png` and `physics-mode.png`. By-doubt and physics-only modes showed about 7 and 4 frames per second on screen while recording. That includes recording overhead, and isn't a benchmark figure. The benchmark is `results/demo_bench.json`: 61.3 frames per second in AI mode with 5 members.
+- **Report:** `docs/REPORT.md` has no placeholder left, so it is no longer called a draft.
+- **Not rerun:** no experiment ran for this entry, and no `results/exp_*.json` changed.

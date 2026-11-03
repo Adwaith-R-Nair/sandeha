@@ -1,6 +1,6 @@
 # Sandeha: Model Card
 
-**Owner:** Adwaith R Nair. **Status:** main-track models are trained and measured. The public-track section is pending.
+**Owner:** Adwaith R Nair. **Status:** main-track models and the separate public-track models are trained and measured.
 
 All numbers come from files in `results/`, named beside them. `docs/RESULTS.md` has the full tables and the analysis.
 
@@ -20,7 +20,7 @@ Five small U-Nets, trained on this project's own 2D smoke simulations, predict o
 | Why U-Net | Lower validation rollout error than FNO on equal 40-minute budgets: 0.0915 against 0.1258, with persistence at 0.6689. One seed each | `arch_selection.json` |
 | Members | 5, seeds 0 to 4 | `ensemble.json` |
 | Member check | All 5 passed the first time. 100 steps on validation from frame 20, no blown-up frame, with error 0.605 to 0.640 against persistence's 1.127 | `ensemble.json` |
-| Weights | `runs/ensemble/seed_*/best.pt`, not in git. Their SHA-256 hashes are in `results/ensemble.json`. Release `v1.0` of the weights is planned and isn't published yet | `ensemble.json` |
+| Weights | `runs/ensemble/seed_*/best.pt`, not in git. Their SHA-256 hashes are in `results/ensemble.json`. They are published in release `v1.0`, file `sandeha-weights.tar.gz`, with `data/normalizer.json` | `ensemble.json` |
 
 **Input (6 channels, 128×128):** velocity (2), density, solid mask, inflow map and buoyancy as a constant channel.
 
@@ -97,24 +97,28 @@ Doubt beat neither baseline on any set. On `test_b` the fixed schedule was bette
 - **Any grid but 128×128, any domain but this closed box, anything in 3D.** The models aren't designed for these.
 - **Real-world flows.** There's no comparison with measured smoke at all.
 - **Other seeds of the whole pipeline.** The dataset was generated once, and each test set has 30 scenes or fewer. The low side of `test_c` has only 10.
-- **Whether the solver tests pass on the last commit.** See `docs/RESULTS.md`. They're to be rerun when the GPU is free.
+- **`tests/data/test_travel.py` at its current version.** The fresh-clone test run at `9c4bac7` left it out. See `docs/RESULTS.md`.
 
 ## Reduced trainings
 
 Each was one seed with a shorter, 25-minute training, for comparison only. Without the divergence penalty or without pushforward, scores were worse than the full member by 0.033 to 0.097 (`exp_ablation.json`). The shorter training is part of that difference. They aren't part of the ensemble.
 
-## PUBLIC TRACK PENDING
+## Public-track models
 
-**This section is a placeholder and holds no results.** A separate ensemble of 3 is planned to be measured on `turbulent_radiative_layer_2D` from The Well. `results/exp_well.json` doesn't exist yet, so this card makes no claim about those models or that dataset. When it is filled in, it must say that the dataset is a published simulation benchmark and not physical measurement, and that this track tests doubt only, with no hand-off.
+A separate ensemble of 3 was measured on `turbulent_radiative_layer_2D` from The Well. The dataset is a published simulation benchmark, not measured data, and this track tests doubt only, with no hand-off. These models weren't trained on smoke, and the main-track models weren't run on this dataset.
 
 **Dataset and credit.** `turbulent_radiative_layer_2D`, from The Well (Ohana et al., *The Well: a Large-Scale Collection of Diverse Physics Simulations for Machine Learning*, NeurIPS 2024, arXiv:2412.00568). The dataset card asks for this citation: Fielding et al., *Multiphase Gas and the Fractal Nature of Radiative Turbulent Mixing Layers*, The Astrophysical Journal Letters 894(2), L24, 2020, DOI 10.3847/2041-8213/ab8d2c. The data licence is CC-BY-4.0. Dataset link: https://huggingface.co/datasets/polymathic-ai/turbulent_radiative_layer_2D. Full entries are in `docs/REFERENCES.md`.
 
 | Item | Value |
 |---|---|
-| Training split, members and budget | PENDING |
-| Within-time Spearman and AUROC on the official test split | PENDING |
-| No-ensemble signal, same measures | PENDING |
-| Where not to trust these models | PENDING |
+| Models | U-Net with base width 32 and 4 levels. Input is density, pressure and 2 velocity channels, and output is the change in each. The cooling time isn't an input (`exp_well.json`, `DECISIONS.md` B51) |
+| Training split, members and budget | Official `train` split of 72 trajectories. 3 members, seeds 0 to 2, with a limit of 40 minutes each. Pushforward, and no divergence penalty, because this flow is compressible (`exp_well.json`) |
+| Weights | Not in git and not in release `v1.0`. Their SHA-256 hashes are in `exp_well.json` |
+| Doubt score | The 99th percentile of the doubt map, chosen on the official `valid` split (`well_selection.json`) |
+| Within-time Spearman on the official test split, 9 trajectories | Frames 21 to 70: 0.820 [0.494, 0.910]. Frames 21 to 100: 0.467 [0.142, 0.643] (`exp_well.json`) |
+| Within-time AUROC | None. 9 trajectories can't give the 5 bad and 5 good frames that each time needs. Pooled AUROC is 0.743, and isn't evidence (`exp_well.json`) |
+| No-ensemble signal, same measures | Within-time Spearman, frames 21 to 70: 0.186 [-0.221, 0.501]. Frames 21 to 100: -0.208 [-0.466, 0.059]. No within-time AUROC. Pooled AUROC is 0.725, and isn't evidence (`exp_well.json`) |
+| Where not to trust these models | Anywhere but this benchmark. With 9 test trajectories, one per cooling time, doubt may partly be sorting flows by cooling time, which wasn't tested. The highest of ten doubt bins had a mean error of 0.583, below the 1.115 of the bin under it, so a higher doubt doesn't always mean a larger error. Don't read this as a result about smoke or about hand-off, or as proof that doubt beats divergence: on `test_b` the divergence signal scored higher |
 
 ## Reproducing
 

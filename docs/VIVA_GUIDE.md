@@ -2,7 +2,23 @@
 
 For Adwaith, to explain and defend the project to a professor.
 
-**Status of this guide:** the main-track results exist, and every number here comes from a file in `results/`, named beside it. Lower is better for every score. A set score is the mean per-frame error over frames 21 to 70. Brackets are 95% intervals over whole scenes. The public-dataset results don't exist yet, and those places say **PUBLIC TRACK PENDING**.
+**Status of this guide:** the main-track and public-dataset results exist, and every number here comes from a file in `results/`, named beside it. Lower is better for every score. A set score is the mean per-frame error over frames 21 to 70. Brackets are 95% intervals over whole scenes, or over whole trajectories on the public dataset.
+
+## If you only have one hour
+
+Do these in order, and say the answers out loud. The minutes are a suggestion. If time runs out, cut from the bottom of the guide, not from steps 1 to 3.
+
+| Minutes | Read or rehearse | How |
+|---|---|---|
+| 10 | "Read this first": the one-paragraph explanation, the sentence not to say, and how to present a mixed result | Say the paragraph and the three sentences aloud until they need no notes |
+| 10 | "Numbers to know by heart" and "Public dataset results" | Learn the `test_b` row first: 0.2881 against 0.2652, a difference of 0.0229 [0.004, 0.041]. Then doubt against divergence on `test_b` and on the public dataset |
+| 15 | "The hardest ones": H1, H2, H3, H4, H5, H6 and H11 | Answer each aloud before reading it. Get the first sentence exact |
+| 5 | "The hard ones" and after: questions 38, 40 and 41 | The public dataset, the divergence signal and the weakest points |
+| 12 | "Part 4: Demo script": "The script", with the real demo running | Go through it once. Use **By doubt**, **AI only** and **Physics only** on a star, and read each frame rate from the screen |
+| 5 | "If something fails" | Read the table. Play `docs/assets/sandeha-demo.mp4` once to check that it works |
+| 3 | "Rules while speaking" | Read it last, and keep it in mind going in |
+
+Skip the concept sections unless a step above shows a gap. Don't rerun any experiment or `scripts/bench_demo.py`.
 
 ## Read this first
 
@@ -59,9 +75,21 @@ If you only get three sentences: "The hoped-for result failed: doubt-based hand-
 
 **The post-hoc story in one line (`results/posthoc_analysis.json`, exploratory).** The largest supported cause of the `test_b` loss is which scenes got the solver: 19 of 30 scenes got no hand-off in the window. Late hand-offs, my first guess after seeing the results and before the post-hoc analysis, explain little.
 
-## PUBLIC TRACK PENDING
+## Public dataset results
 
-**This section holds no results.** `results/exp_well.json` doesn't exist yet, so nothing in this guide says anything about the public dataset, and you shouldn't quote any figure for it. When the file exists, fill this in from it, and replace the marker in question 38: within-time Spearman and AUROC of doubt on the official test split, the same for the no-ensemble signal, and whether doubt predicted error there. It's a published simulation benchmark, with 3 members and no hand-off. If you're asked before it's done, say: "That track isn't finished, so I have no number for it."
+**`results/exp_well.json`.** `turbulent_radiative_layer_2D` from The Well. It's a published simulation benchmark, not measured data, with 3 members, 9 test trajectories, one test run and no hand-off.
+
+| Frames | Doubt, within-time Spearman | No-ensemble signal, within-time Spearman |
+|---|---|---|
+| 21 to 70, primary | 0.820 [0.494, 0.910] | 0.186 [-0.221, 0.501] |
+| 21 to 100, secondary | 0.467 [0.142, 0.643] | -0.208 [-0.466, 0.059] |
+
+- **Within-time AUROC:** none. 9 trajectories can't give 5 bad and 5 good frames at each time. The pooled AUROCs, 0.743 and 0.725, aren't evidence.
+- **Pooled Spearman, not evidence:** divergence is higher, at 0.608 against doubt's 0.312. Say so if asked.
+- **Calibration:** it isn't steady. The highest of ten doubt bins has a mean error of 0.583, and the bin below it 1.115.
+- **The doubt score:** the 99th percentile, chosen on validation (`results/well_selection.json`). The main track froze the 95th.
+
+Say: "On this benchmark doubt tracked error at a given time, on only 9 trajectories. On `test_b` the divergence signal scored higher, and here doubt did. This is a different flow, so I don't generalise either way, and it says nothing about hand-off."
 
 ## Measurements from before the ensemble
 
@@ -142,7 +170,7 @@ Divergence of a plume at 256×256, the largest value: 0.00085 measured on the fa
 | `results/exp_ablation.json` | What removing the penalty, removing pushforward and changing ensemble size do |
 | `results/posthoc_analysis.json` | Why hand-off fell short. Exploratory, and not preregistered |
 | `results/demo_bench.json` | The demo's frame rate and member count |
-| `results/exp_well.json` | PUBLIC TRACK PENDING. This file doesn't exist yet |
+| `results/exp_well.json` | Doubt and the no-ensemble signal on the public dataset's test split |
 
 `scripts/render_results.py` turns the experiment files into the generated block of `docs/RESULTS.md`, and `scripts/make_figures.py` draws them into `results/figures/`. `scripts/posthoc_analysis.py` writes the post-hoc file and its figures from saved rollouts. `docs/RESULTS.md` has the full written analysis, so read it as well.
 
@@ -543,6 +571,8 @@ As a predictor of error on `test_b`, it did score higher, and I can't fully expl
 
 As for why, no experiment tested a cause. One untested possibility is that a network meeting an unseen shape breaks incompressibility in a way its own output shows, while five members stepping from a shared mean can agree on the same mistake. Post-hoc, doubt tracks largest flow travel, at Spearman 0.86 on `test_b`, so it may partly be measuring how fast a scene is. The ensemble still earns something as a predictor of the flow: 0.308 against 0.358 for one member on `test_b`. As a doubt signal, it hasn't shown that it's worth its cost. I didn't try divergence for hand-off (`docs/DECISIONS.md`, B60), because the case for it comes from having seen `test_b`, and judging it would need new test scenes.
 
+If asked about the public dataset: there the order flips, with doubt at 0.820 [0.494, 0.910] and divergence at 0.186 [-0.221, 0.501] (`results/exp_well.json`). That doesn't answer this question. It's a different flow, on 9 trajectories, and it's compressible, so its true divergence isn't zero. That may make divergence a weaker sign of a fault there, but I didn't test that.
+
 **H3. Why is the oracle no better?**
 On `test_b`, my reading is that handing off when the current frame looks bad was a poor way to spend solver time, even with the true error: the oracle scored 0.2981 and the fixed schedule 0.2652. That's an interpretation of descriptive figures, not a tested finding, and it doesn't carry to the other sets. On `test_a` the oracle is nominally ahead of fixed, 0.2446 against 0.2507. On the high side of `test_c` it scored 0.3959, lower than fixed (0.4112 and 0.4190), random (0.4179) and doubt (0.4100). Doubt less oracle is 0.000 [-0.006, 0.007] on `test_a` and -0.010 [-0.024, 0.002] on `test_b`, where the oracle scored 0.298 at 13.0% solver and doubt 0.288 at 13.9%. Both intervals include zero. So the oracle isn't shown to be worse, only no better. The rest of this answer is post-hoc. On `test_b` its threshold, error above 0.596, gives a median first hand-off at frame 55.5, a mean start at frame 61, and 97.7% consecutive hand-offs. Even spacing at the oracle's own scene shares would gain 0.040 to 0.042, and it actually gained 0.010, a gap of -0.030 [-0.050, -0.013]. The scenes it picked do gain more under the fixed schedule, by 0.033 [0.009, 0.058]. So knowing the true error does find where the solver helps, but a threshold on error acts too late. Two things to add: it was ahead on the high side of `test_c`, by 0.014 [0.002, 0.027], and it isn't a true upper bound, since it judges one frame at a time (question 31). Its figures are descriptive, and its threshold comes from the test set by design.
 
@@ -688,13 +718,13 @@ Mask faces touching solids. Advect density and both velocity components by traci
 `results/throughput.json` shows U-Net items per second going 220.43, 237.82, 250.23 at batches 8, 16, 32, with memory going 0.693, 1.363, 2.713 GB. Doubling from 16 to 32 adds little speed and doubles the memory. It is a reasonable middle, and batch size wasn't tuned for accuracy.
 
 **38. What does the public dataset add? Is it real data?**
-It tests the doubt measures on data we didn't generate, with 3 members. It is a published scientific simulation, not physical measurement. If the course requires measured real-world data, it doesn't meet that. It has no hand-off, as there is no solver for that physics in the project. The dataset card asks us to cite Fielding et al. 2020, so we cite that as well as The Well. **PUBLIC TRACK PENDING:** `results/exp_well.json` doesn't exist yet, so there's no number to give.
+It tests the doubt measures on data we didn't generate, with 3 members. It is a published scientific simulation, not physical measurement. If the course requires measured real-world data, it doesn't meet that. It has no hand-off, as there is no solver for that physics in the project. The dataset card asks us to cite Fielding et al. 2020, so we cite that as well as The Well. On 9 test trajectories, doubt's within-time Spearman was 0.820 [0.494, 0.910] in frames 21 to 70, and 0.467 [0.142, 0.643] up to frame 100 (`results/exp_well.json`). The interval is wide, and within-time AUROC has no value. Each test trajectory has its own cooling time, which isn't a model input, so doubt may partly be sorting flows by cooling time. I didn't test that.
 
 **39. Why would disagreement rise on shapes the network hasn't seen?**
 The hope is that members, trained from different starts, agree where the data pins them down and vary where it doesn't. That was the hope, and Test B tested it. It didn't hold. The chance of higher doubt on `test_b` than on `test_a` is 0.479 [0.335, 0.615], which includes one half, even though the ensemble's error was higher there. On the low side of `test_c` it's 0.103 [0.033, 0.194], and on the high side 0.968 [0.923, 0.996] (`results/exp_doubt.json`, under `rise_on_unfamiliar`). So its level doesn't line up with how unfamiliar a flow is.
 
 **40. Why use a signal that needs five networks, when divergence from one network is free?**
-That is one of the comparisons. The no-ensemble signal is the RMS divergence of a single model's output, scored by the same measures. If it does as well, the ensemble isn't earning its cost as a doubt signal. On `test_b` it scored higher, and it scored much lower on the high side of `test_c`. See question H2 (`results/exp_doubt.json`).
+That is one of the comparisons. The no-ensemble signal is the RMS divergence of a single model's output, scored by the same measures. If it does as well, the ensemble isn't earning its cost as a doubt signal. On `test_b` it scored higher, and it scored much lower on the high side of `test_c`. See question H2 (`results/exp_doubt.json`). On the public dataset it also scored lower, 0.186 [-0.221, 0.501] against 0.820 [0.494, 0.910], on a different flow and only 9 trajectories (`results/exp_well.json`). So neither signal leads everywhere.
 
 **41. What are the project's weakest points?**
 State them plainly:
@@ -728,7 +758,6 @@ About five minutes. The demo is a real model running live on the laptop's GPU, w
 | The day before | Check that the backup recording plays: `docs/assets/sandeha-demo.mp4`. Say that it's a recording when you use it |
 | The day before | Open each figure in `results/figures/`. Check the numbers below against the result files |
 | The day before | Don't rerun `scripts/bench_demo.py` just to check it, since it overwrites `results/demo_bench.json`. The measured figure is 61.3 frames per second with 5 members |
-| The day before | Check whether `results/exp_well.json` exists. If it does, fill in the PUBLIC TRACK PENDING section |
 | The day before | Read `docs/RESULTS.md`, and rehearse the weak numbers as well as the good ones |
 | An hour before | Plug in the charger, and close anything using the GPU. `nvidia-smi` should show no other job |
 | Ten minutes before | Start the server, open the page, and try each preset once |
@@ -790,6 +819,7 @@ Then choose **AI only**, and read the frame rate. Choose **Physics only**, and r
 
 - AI only: read it from the screen. The benchmark measured 61.3 frames per second with 5 members, against a target of 15 (`results/demo_bench.json`). What you see live may differ, and the benchmark had no solver frames.
 - Physics only: read it from the screen, and say that it is a live reading, not a benchmark. The ensemble still runs on each decision in this mode, so it overstates a pure solver's cost.
+- In the recording, by-doubt and physics-only modes show about 7 and 4 frames per second. Those include recording overhead, so don't quote them as a benchmark or expect them to match the live page. The only benchmark figure is the AI-mode one.
 
 ### 7. The measured results (60 seconds)
 
@@ -817,7 +847,7 @@ Stay calm and say what happened. A failure explained well is better than one hid
 |---|---|---|
 | `results/ensemble.json is missing` or `says the ensemble isn't complete` | Training hasn't finished, or the file isn't there | Use `--random-weights`. The page then says "Untrained models: this smoke and doubt are not results". Read that out, show only the mechanism, and use the figures for results |
 | `results/handoff_selection.json is missing` | Selection hasn't run | The same as above, or run `scripts/select_handoff.py` beforehand. Don't run it during the viva |
-| A checkpoint `is missing or doesn't match its checksum` | The weights aren't the measured ones | Don't work around it. Use the backup video. Release `v1.0` isn't published yet, so it can't restore them. If it has been published by then, restore `sandeha-weights.tar.gz` from it, unpacked at the repo root |
+| A checkpoint `is missing or doesn't match its checksum` | The weights aren't the measured ones | Don't work around it. Use the backup video. With internet, restore `sandeha-weights.tar.gz` from release `v1.0`, unpacked at the repo root |
 | `No GPU found` | The driver or CUDA isn't available | Run with `--device cpu`, which is slow on purpose, and say so. Otherwise use the backup video |
 | `The demo ran out of GPU memory` | Something else is using the GPU | Close it. If that fails, use `--members 3`, and say that the page now runs fewer members, and that the frozen threshold came from another ensemble size |
 | Address already in use | Another server is on port 8000 | Stop it, or run with `--port 8001` |
@@ -829,7 +859,7 @@ Stay calm and say what happened. A failure explained well is better than one hid
 | Doubt doesn't rise on a star | One run shows nothing either way, and it matches the measured result | Say: "One scene can't settle this. Over 30 scenes, doubt didn't rise on unseen shapes: 0.479 [0.335, 0.615]", and go to the figure |
 | Smoke passes through a thin brush stroke | A known limit: semi-Lagrangian advection can jump thin walls | Say so, and use a wider brush. Don't call it a model error |
 | Smoke goes wild for a moment, then a solver frame shows | A non-finite output: the server goes back to the last finite frame with a hand-off, or to an empty box if that fails too | Say what it is: the network blew up, and the system recovered. Then press **Reset** |
-| The laptop or the whole demo fails | | Play `docs/assets/sandeha-demo.mp4`, and say it is a recording. Then use the figures in `results/figures/` and `docs/RESULTS.md` |
+| The laptop or the whole demo fails | | Play `docs/assets/sandeha-demo.mp4`, and say it is a recording. The stills `docs/assets/doubt-star.png` and `docs/assets/physics-mode.png` show the two modes. Then use the figures in `results/figures/` and `docs/RESULTS.md` |
 | A question you can't answer | | Say "I don't know", and say what you would check and where. Don't guess a number |
 
 ## Rules while speaking
