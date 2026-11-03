@@ -1,0 +1,15 @@
+# The experiments (docs/PLAN.md, Task 9). The rules are in docs/PREREGISTRATION.md.
+start: 20 # Rollouts start from the stored reference at this frame.
+primary_end: 70 # Frames 21 to 70 are the primary window.
+long_end: 120 # Frames 21 to 120 are the secondary one.
+n_resamples: 2000
+usable_error: 1.0 # A prediction stays usable until its per-frame error first passes this.
+rollout_lengths: [1, 5, 10, 20, 30, 50, 70, 100]
+timing_scenes: 3 # The timed reference solver, for its milliseconds per frame.
+timing_frames: 20
+default_handoff_frames: 5 # For descriptive sweeps only, if **never** was chosen on validation.
+random_seeds: [0, 1, 2, 3, 4]
+ensemble_sizes: [2, 3, 5]
+sweep: # Descriptive, on top of validation's candidate thresholds.
+  periods: [5, 10, 20, 40]
+  rates: [0.02, 0.05, 0.1, 0.2]
