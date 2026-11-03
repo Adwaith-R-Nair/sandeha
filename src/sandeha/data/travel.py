@@ -4,21 +4,34 @@ A scene named in the manifest is restarted from the frame of its largest travel,
 step size and at half of it, and the difference in density is compared with that of the split's
 quietest scenes. Starting both from one state leaves out the chaotic difference that builds up over
 a whole run. Scenes come from their seeds, so the rule reads the manifest and no split's files.
+
+The controls must be measured before generation, and ``check_controls`` is what enforces that.
 """
 
+import json
 import math
+from dataclasses import dataclass
+from pathlib import Path
 
+import matplotlib
+
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
 import numpy as np
 import torch
 
 from sandeha.data.generate import scene_seed, travel_cells
-from sandeha.physics.scenes import SPLITS, Scene, sample_scene
+from sandeha.data.store import DATA_ROOT
+from sandeha.physics.scenes import SPLITS, TRAIN_BUOYANCY, Scene, sample_scene
 from sandeha.physics.solver import SmokeSolver, SmokeState
 
 FORK_FRAMES = 5
+FRAMES_BEFORE_FORK = 2  # Shown in a rendering, so that it shows the flow going into the spike.
 CONTROLS = 3
 PASS_FACTOR = 2.0  # A named scene passes at up to this many times the largest control.
 DEVICE = torch.device("cuda")
+# What a control's figure depends on. A sample with other values says nothing about this dataset.
+CONTROL_PHYSICS = ("res", "dt", "steps_per_frame", "frames", "cg_tol", "cg_max_iter")
 
 
 def _empty_state(count: int, res: int) -> SmokeState:
@@ -70,8 +83,20 @@ def fork_frame(frame: int, frames: int) -> int:
     return max(min(frame, frames - 1 - FORK_FRAMES), 0)
 
 
-def step_size_difference(scene: Scene, config: dict, fork: int) -> list[float]:
-    """RMS density difference over fluid cells, relative to RMS density, from a shared state."""
+@dataclass
+class RestartRuns:
+    """Density at the reference grid, from one state, at the data's step size and at half of it."""
+
+    shared_frames: list[int]  # The frames up to the restart, which both runs have in common.
+    shared: list[torch.Tensor]
+    frames: list[int]  # The frames after the restart.
+    coarse: list[torch.Tensor]
+    fine: list[torch.Tensor]
+    solid: list[torch.Tensor]  # The solid in force on the way into each of ``frames``.
+
+
+def restart_runs(scene: Scene, config: dict, fork: int) -> RestartRuns:
+    """Run a scene alone up to ``fork``, then on for ``FORK_FRAMES`` at both step sizes."""
     dt, substeps = config["dt"], config["steps_per_frame"]
     obstacle = torch.from_numpy(scene.obstacle)[None, None].to(DEVICE)
     inflow = torch.from_numpy(scene.inflow)[None, None].to(DEVICE)
@@ -84,9 +109,13 @@ def step_size_difference(scene: Scene, config: dict, fork: int) -> list[float]:
 
     solver = _solver(config, dt)
     shared = _empty_state(1, config["res"])
+    shared_frames = [frame for frame in range(fork + 1) if frame >= fork - FRAMES_BEFORE_FORK]
+    history = [shared.density[0, 0]] if 0 in shared_frames else []
     for frame in range(fork):
         for _ in range(substeps):
             shared = solver.step(shared, solid_at(frame), inflow, lift)
+        if frame + 1 in shared_frames:
+            history.append(shared.density[0, 0])
 
     def carry_on(step: float, count: int) -> list[torch.Tensor]:
         fine = _solver(config, step)
@@ -100,11 +129,69 @@ def step_size_difference(scene: Scene, config: dict, fork: int) -> list[float]:
     before = shared.density.clone()
     coarse, fine = carry_on(dt, substeps), carry_on(dt / 2, 2 * substeps)
     assert torch.equal(before, shared.density), "a step must not change the state it starts from"
+    return RestartRuns(
+        shared_frames,
+        history,
+        list(range(fork + 1, fork + 1 + FORK_FRAMES)),
+        coarse,
+        fine,
+        [solid_at(frame)[0, 0] for frame in range(fork, fork + FORK_FRAMES)],
+    )
+
+
+def step_size_difference(scene: Scene, config: dict, fork: int) -> list[float]:
+    """RMS density difference over fluid cells, relative to RMS density, from a shared state."""
+    runs = restart_runs(scene, config, fork)
     result = []
-    for k, (a, b) in enumerate(zip(coarse, fine)):
-        fluid = ~solid_at(fork + k)[0, 0]
+    for a, b, solid in zip(runs.coarse, runs.fine, runs.solid):
+        fluid = ~solid
         result.append(float((a - b)[fluid].norm() / b[fluid].norm()))
     return result
+
+
+def render_restart(scene: Scene, config: dict, fork: int, path: Path, title: str) -> list[int]:
+    """Draw the frames around a restart at both step sizes, and return the frames shown.
+
+    Top row, the data's step size. Middle row, half of it. Bottom row, the difference, on its own
+    scale so that a small leak can be seen. Solid is grey. A frame before the restart has one run.
+    """
+    runs = restart_runs(scene, config, fork)
+    shown = runs.shared_frames + runs.frames
+    coarse = runs.shared + runs.coarse
+    fine = runs.shared + runs.fine
+    top = max(float(density.max()) for density in coarse + fine) or 1.0
+    late = len(runs.shared)
+    gaps = [(a - b).abs() for a, b in zip(runs.coarse, runs.fine)]
+    gap_top = max(float(gap.max()) for gap in gaps) or 1.0
+    solids = [torch.from_numpy(scene.obstacle)] * late + [solid.cpu() for solid in runs.solid]
+
+    figure, axes = plt.subplots(3, len(shown), figsize=(1.7 * len(shown), 5.4), squeeze=False)
+    for column, frame in enumerate(shown):
+        rows = (coarse[column], fine[column], gaps[column - late] if column >= late else None)
+        for row, values in enumerate(rows):
+            axis = axes[row, column]
+            axis.set_xticks([])
+            axis.set_yticks([])
+            if values is None:
+                axis.axis("off")
+                continue
+            limit = gap_top if row == 2 else top
+            axis.imshow(values.cpu().numpy(), origin="lower", cmap="magma", vmin=0, vmax=limit)
+            overlay = np.zeros((*values.shape, 4))
+            overlay[solids[column].numpy()] = (0.6, 0.6, 0.6, 1.0)
+            axis.imshow(overlay, origin="lower")
+        axes[0, column].set_title(f"frame {frame}", fontsize=9)
+    dt = config["dt"]
+    axes[0, 0].set_ylabel(f"dt={dt}", fontsize=9)
+    axes[1, 0].set_ylabel(f"dt={dt / 2}", fontsize=9)
+    axes[2, late].set_ylabel(f"difference, top {gap_top:.3g}", fontsize=9)
+    figure.suptitle(title, fontsize=10)
+    figure.tight_layout()
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    figure.savefig(path, dpi=100)
+    plt.close(figure)
+    return shown
 
 
 def _largest(values: list[float]) -> float:
@@ -116,6 +203,11 @@ def _figure(scene: Scene, config: dict, frame: int) -> dict:
     fork = fork_frame(frame, config["frames"])
     by_frame = step_size_difference(scene, config, fork)
     return {"fork_frame": fork, "density_difference_by_frame": by_frame, "figure": _largest(by_frame)}
+
+
+def _side(scene: Scene) -> str:
+    """A test_c scene's side, by the same test as the manifest's count of sides."""
+    return "low" if scene.buoyancy < TRAIN_BUOYANCY[0] else "high"
 
 
 def _judge_split(split: str, entry: dict, config: dict) -> dict:
@@ -136,7 +228,8 @@ def _judge_split(split: str, entry: dict, config: dict) -> dict:
 
     def measure(i: int) -> dict:
         scene = sample_scene(np.random.default_rng(entry["seeds"][i]), config["res"], split)
-        return {"scene": i, "largest_travel": travel[i], **_figure(scene, config, frames[i])}
+        side = {"side": _side(scene)} if split == "test_c" else {}
+        return {"scene": i, "largest_travel": travel[i], **side, **_figure(scene, config, frames[i])}
 
     others = sorted((i for i in range(len(travel)) if i not in chosen), key=lambda i: travel[i])
     result["controls"] = [measure(i) for i in others[:CONTROLS]]
@@ -152,6 +245,19 @@ def _judge_split(split: str, entry: dict, config: dict) -> dict:
         result["named"].append(named)
     result["passed"] = math.isfinite(limit) and all(named["passed"] for named in result["named"])
     return result
+
+
+def render_named_scenes(result: dict, manifest: dict, directory: Path, relative_to: Path) -> None:
+    """Rule 4: draw the frames around each named scene's spike, and add each path to ``result``."""
+    config = manifest["config"]
+    for split, entry in result["splits"].items():
+        for named in entry["named"]:
+            seed = manifest["splits"][split]["seeds"][named["scene"]]
+            scene = sample_scene(np.random.default_rng(seed), config["res"], split)
+            path = Path(directory) / f"travel_rule_{split}_{named['scene']:05d}.png"
+            title = f"{split} scene {named['scene']}: travel {named['largest_travel']:.2f}, figure {named['figure']:.3g}"
+            render_restart(scene, config, named["fork_frame"], path, title)
+            named["rendering"] = str(path.relative_to(relative_to))
 
 
 def apply_travel_rule(manifest: dict) -> dict:
@@ -184,17 +290,25 @@ def measure_control_sample(config: dict, seed: int, scenes_per_split: int) -> di
             largest += values.max(axis=1).tolist()
             frames += values.argmax(axis=1).tolist()
             converged += ok.tolist()
-        lowest = sorted(range(scenes_per_split), key=lambda i: largest[i])[:CONTROLS]
-        controls = [
-            {
-                "scene": i,
-                "late_frame": batch[i].late_frame,
-                "largest_travel": largest[i],
-                "largest_travel_frame": frames[i],
-                **_figure(batch[i], config, frames[i]),
-            }
-            for i in lowest
-        ]
+        measured = {}
+
+        def control(i: int) -> dict:
+            if i not in measured:
+                side = {"side": _side(batch[i])} if split == "test_c" else {}
+                measured[i] = {
+                    "scene": i,
+                    "late_frame": batch[i].late_frame,
+                    "largest_travel": largest[i],
+                    "largest_travel_frame": frames[i],
+                    **side,
+                    **_figure(batch[i], config, frames[i]),
+                }
+            return measured[i]
+
+        def lowest(indices) -> list[dict]:
+            return [control(i) for i in sorted(indices, key=lambda i: largest[i])[:CONTROLS]]
+
+        controls = lowest(range(scenes_per_split))
         splits[split] = {
             "scene_travel": largest,
             "late_scenes": sum(scene.late_obstacle is not None for scene in batch),
@@ -202,4 +316,56 @@ def measure_control_sample(config: dict, seed: int, scenes_per_split: int) -> di
             "controls": controls,
             "largest_control_figure": _largest([control["figure"] for control in controls]),
         }
-    return {"seed": seed, "scenes_per_split": scenes_per_split, "fork_frames": FORK_FRAMES, "splits": splits}
+        if split == "test_c":
+            # The rule's controls are the lowest overall, which may all be one side, while a named
+            # scene is likely the other. Each side's own figures show whether that matters.
+            sides = {"low": [], "high": []}
+            for i, scene in enumerate(batch):
+                sides[_side(scene)].append(i)
+            splits[split]["sides"] = {
+                side: {"scenes": indices, "controls": lowest(indices)} for side, indices in sides.items()
+            }
+    used = {key: config[key] for key in CONTROL_PHYSICS if key in config}
+    return {
+        "seed": seed,
+        "scenes_per_split": scenes_per_split,
+        "fork_frames": FORK_FRAMES,
+        "config": used,
+        "splits": splits,
+    }
+
+
+class ControlsNotReady(RuntimeError):
+    """The rule's controls haven't been measured for this config, so generation can't start."""
+
+
+def controls_gate_applies(root: Path, allow_dirty: bool) -> bool:
+    """Everything but a scratch run, which ``--allow-dirty`` outside the data root declares."""
+    return not allow_dirty or Path(root).resolve() == Path(DATA_ROOT).resolve()
+
+
+def check_controls(config: dict, path: Path) -> None:
+    """Raise unless ``path`` holds controls measured on committed code, for this config's physics."""
+    path = Path(path)
+    if not path.exists():
+        raise ControlsNotReady(
+            f"{path} is missing. Measure and log the controls before generating, with: "
+            "scripts/long_job.sh travel-controls uv run python scripts/check_travel.py --control-sample"
+        )
+    result = json.loads(path.read_text())
+    if result.get("git_dirty", True):
+        raise ControlsNotReady(f"{path} was not measured on committed code, so it can't be traced")
+    # A setting left out of a config takes the solver's default, so compare what the two give.
+    used = result.get("config", {})
+    settings = {"cg_tol": 1e-5, "cg_max_iter": 2000}
+    different = [
+        key
+        for key in CONTROL_PHYSICS
+        if used.get(key, settings.get(key)) != config.get(key, settings.get(key))
+    ]
+    if different:
+        raise ControlsNotReady(f"{path} was measured with different {different}, so it doesn't judge this dataset")
+    for split in SPLITS:
+        figure = result["splits"].get(split, {}).get("largest_control_figure", math.nan)
+        if not math.isfinite(figure):
+            raise ControlsNotReady(f"{path} has no finite control figure for {split}")

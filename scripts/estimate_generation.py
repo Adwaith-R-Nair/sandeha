@@ -22,7 +22,7 @@ import numpy as np
 import torch
 
 from sandeha.data.generate import _simulate_batch, generate, git_state, load_config, scene_seed
-from sandeha.physics.scenes import SPLITS, sample_scene
+from sandeha.physics.scenes import SPLITS, TRAIN_BUOYANCY, sample_scene
 
 ROOT = Path(__file__).resolve().parents[1]
 ESTIMATE_SEED = 900001  # Not the dataset's seed.
@@ -50,11 +50,34 @@ def run_sample(config: dict, scenes: dict[str, int], batch: int, parent: Path) -
     sample["batch_size"] = batch
     sample["scenes"] = scenes
     root = Path(tempfile.mkdtemp(dir=parent))
+    scene_bytes = []
+
+    def weigh(split: str, index: int) -> None:
+        scene_bytes.append((root / split / "scenes" / f"{index:05d}.npz").stat().st_size)
+
     began = time.perf_counter()
-    manifest = generate(sample, root, log=lambda line: print(line, flush=True))
+    manifest = generate(sample, root, on_scene=weigh, log=lambda line: print(line, flush=True))
     manifest["wall_seconds"] = time.perf_counter() - began
+    manifest["scene_file_bytes"] = sum(scene_bytes)
     shutil.rmtree(root)
     return manifest
+
+
+def peak_disk(sample: dict, planned_scenes: int) -> float:
+    """Bytes at the end of generation, when a split's scene files and final files both exist."""
+    finished = sum(entry["bytes"] for entry in sample["splits"].values())
+    per_scene = (sample["scene_file_bytes"] + finished) / sum(sample["config"]["scenes"].values())
+    return per_scene * planned_scenes
+
+
+def travel_by_side(sample: dict, res: int) -> dict:
+    """Each test_c sample scene's travel, by its side, from the seeds and the manifest's figures."""
+    entry = sample["splits"]["test_c"]
+    sides = {"low": [], "high": []}
+    for seed, travel in zip(entry["seeds"], entry["stats"]["travel_by_scene"]):
+        scene = sample_scene(np.random.default_rng(seed), res, "test_c")
+        sides["low" if scene.buoyancy < TRAIN_BUOYANCY[0] else "high"].append(travel)
+    return sides
 
 
 def compare_batch(config: dict, batch: int) -> dict:
@@ -145,9 +168,16 @@ def main() -> None:
         "sample_wall_seconds": sample["wall_seconds"],
         "sample_bytes": sample_bytes,
         "sample_solver_health": {split: sample["splits"][split]["stats"] for split in SPLITS},
+        "sample_scenes_over_thinnest_wall": sum(
+            len(sample["splits"][split]["stats"]["scenes_over_thinnest_wall"]) for split in SPLITS
+        ),
+        "sample_largest_travel": max(sample["splits"][split]["stats"]["max_travel_cells_per_step"] for split in SPLITS),
+        "sample_test_c_travel_by_side": travel_by_side(sample, config["res"]),
         "planned_scenes": planned,
         "planned_bytes": planned_bytes,
         "planned_gb": planned_bytes / GB,
+        "planned_peak_disk_gb": peak_disk(sample, planned_scenes) / GB,
+        "disk_free_gb": shutil.disk_usage(parent).free / GB,
         "estimate_seconds": {
             "simulate_by_split": simulate,
             "assembling": assembling,
@@ -167,7 +197,8 @@ def main() -> None:
         "budget_hours": TIME_BUDGET_SECONDS / 3600,
         "within_budget": total <= TIME_BUDGET_SECONDS,
         "not_included": [
-            "the visual spot-check, which is not built",
+            "the spot-check: scripts/spot_check.py and scripts/check_travel.py --data-root",
+            "the controls before generation: scripts/check_travel.py --control-sample",
             "sustained thermal throttling beyond the length of this sample",
             "disk cache effects: this sample's files fit in memory, and the planned ones may not",
         ],

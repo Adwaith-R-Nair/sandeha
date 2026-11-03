@@ -4,13 +4,16 @@ Three uses, each writing one JSON result:
 
 - With ``--data-root``, apply the rule in ``docs/PREREGISTRATION.md`` to a finished dataset: this
   is the spot-check's step. It reads the manifest and reruns named scenes and controls from their
-  seeds, and exits with status 1 if the data isn't accepted. Writes results/travel_rule.json.
+  seeds, and exits with status 1 if the data isn't accepted. Writes results/travel_rule.json, and a
+  rendering of each named scene to results/figures/, as the rule's step 4 requires.
 - With ``--control-sample``, measure the rule's controls on scenes of every kind and split, from a
   seed that isn't the dataset's. Writes results/travel_controls.json.
-- With neither, the sample behind results/travel_check.json: ordinary late-obstacle train scenes,
+- With ``--recheck-largest``, rerun the largest-travel scene of results/travel_check.json on the
+  current measure, alone. Writes results/travel_recheck.json. Takes under a minute.
+- With none, the sample behind results/travel_check.json: ordinary late-obstacle train scenes,
   where a late obstacle can throw up a one-off spike in speed, from the same seed.
 
-Usage: uv run python scripts/check_travel.py [--data-root data | --control-sample]
+Usage: uv run python scripts/check_travel.py [--data-root data | --control-sample | --recheck-largest]
 """
 
 import argparse
@@ -27,6 +30,7 @@ from sandeha.data.travel import (
     apply_travel_rule,
     fork_frame,
     measure_control_sample,
+    render_named_scenes,
     step_size_difference,
     travel_by_frame,
 )
@@ -106,10 +110,37 @@ def late_sample(config: dict, commit: str, dirty: bool) -> dict:
     }
 
 
+def recheck_largest(config: dict, saved: dict) -> dict:
+    """The saved sample's largest-travel scene, run alone on the current measure.
+
+    Alone, not in its first batch of 16, so its arithmetic isn't exactly that run's.
+    """
+    row = max(saved["scenes"], key=lambda scene: scene["largest_travel"])
+    seed = scene_seed(SEED, "train", row["scene_index"])
+    scene = sample_scene(np.random.default_rng(seed), config["res"], "train")
+    travel, converged = travel_by_frame([scene], config)
+    wall = MIN_THICKNESS * config["res"]
+    largest = float(travel[0].max())
+    return {
+        "saved_git_commit": saved["git_commit"],
+        "scene_index": row["scene_index"],
+        "late_frame": scene.late_frame,
+        "saved_travel_old_measure": row["largest_travel"],
+        "saved_frame_old_measure": row["largest_travel_frame"],
+        "travel_current_measure": largest,
+        "frame_current_measure": int(travel[0].argmax()),
+        "thinnest_wall_cells": wall,
+        "margin_to_thinnest_wall": (wall - largest) / wall,
+        "above_thinnest_wall": largest > wall,
+        "converged": bool(converged[0]),
+    }
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--data-root", type=Path, help="apply the rule to this finished dataset")
     parser.add_argument("--control-sample", action="store_true", help="measure controls on every kind of scene")
+    parser.add_argument("--recheck-largest", action="store_true", help="rerun the saved sample's largest scene")
     parser.add_argument("--out", type=Path, help="where to write the result")
     args = parser.parse_args()
     commit, dirty = git_state()
@@ -117,8 +148,11 @@ def main() -> None:
     if args.data_root is not None:
         # The new manifest's tracked copy isn't committed until the spot-check ends, so a tree
         # with that change is the normal case here. The result records the state it ran in.
-        result = {"git_commit": commit, "git_dirty": dirty, **apply_travel_rule(read_manifest(args.data_root))}
-        write_result(args.out or ROOT / "results" / "travel_rule.json", result)
+        manifest = read_manifest(args.data_root)
+        result = {"git_commit": commit, "git_dirty": dirty, **apply_travel_rule(manifest)}
+        out = args.out or ROOT / "results" / "travel_rule.json"
+        render_named_scenes(result, manifest, out.parent / "figures", out.parent)
+        write_result(out, result)
         print(json.dumps(result, indent=1))
         if not result["data_accepted"]:
             raise SystemExit("not accepted: see the rule in docs/PREREGISTRATION.md")
@@ -130,6 +164,10 @@ def main() -> None:
     if args.control_sample:
         result = {"git_commit": commit, "git_dirty": dirty, **measure_control_sample(config, SEED, SCENES_PER_SPLIT)}
         write_result(args.out or ROOT / "results" / "travel_controls.json", result)
+    elif args.recheck_largest:
+        saved = json.loads((ROOT / "results" / "travel_check.json").read_text())
+        result = {"git_commit": commit, "git_dirty": dirty, **recheck_largest(config, saved)}
+        write_result(args.out or ROOT / "results" / "travel_recheck.json", result)
     else:
         result = late_sample(config, commit, dirty)
         write_result(args.out or ROOT / "results" / "travel_check.json", result)
