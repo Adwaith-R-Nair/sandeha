@@ -178,7 +178,8 @@ The result that answers the project's question is the primary metric of doubt-ba
 | 2026-11-03 | Stated the rollouts and frames of the evidence measure, calibration, risk-coverage and AUROC. Added the rules for non-finite doubt, the trigger, a candidate grid for `tau`, a selection order, baseline schedules, a rule for unmatched budgets, the comparison, and travel above the thinnest wall. Gave both `test_c` low-side check groups | Review before any data or model existed: results could still have been chosen after being seen. `docs/DECISIONS.md` B31 to B35 |
 | 2026-11-03 | Stated the coarse contact rule for `test_c`, and added the oracle's rule. Travel became a distance, with its command, the controls' population and what happens with no control. The manifest's tracked copy and the normaliser's checksum are now checked | Second review, before any data or model existed: the oracle's `tau` and the contact count could have been chosen after being seen, and the travel rule couldn't be applied to a scene with no late obstacle. `docs/DECISIONS.md` B37 to B41 |
 | 2026-11-03 | Generation now enforces the controls' measuring. The spot-check and the rule's rendering have their commands. Stated the sides of `test_c`'s controls, and that a named scene is likely | Third review, before any data or model existed: the gate had nothing behind it, step 4's rendering had no tool, and the sides' effect wasn't stated. No threshold or factor changed. `docs/DECISIONS.md` B42 to B45 |
-| | Code commit for `--final`: to be recorded in Task 9 | |
+| | Code commit for `--final`: to be recorded in Task 9. **Stale, marked 2026-11-04:** this was done, in "Final run" below | |
+| 2026-11-04 | Marked the row above as stale. No rule, threshold or commit changed. The results are stamped `31f57dc`, the commit that recorded `3a16f42`, with the same code | Written after the final run, as a note only. `docs/DECISIONS.md` B58 |
 
 ## Final run
 

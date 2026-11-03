@@ -8,6 +8,16 @@
 
 **Spec:** `docs/DESIGN.md`. Read it first. Where this plan is silent, the design decides.
 
+## Status on 2026-11-04
+
+**Stale check boxes.** The boxes below weren't ticked as work went on, so an empty box doesn't mean a step is undone. `BUILD_LOG.md` is the record of what was done. This plan is kept as written, apart from the lines marked **Stale**.
+
+| Tasks | State |
+|---|---|
+| 1 to 9, 11 and 12 | Done, with results in `RESULTS.md`. `--final` ran once. Doubt-based hand-off didn't beat the baselines, and that is reported as a finding |
+| 10, public track | **PUBLIC TRACK PENDING.** Code is written and training is under way. `results/exp_well.json` doesn't exist yet |
+| 13, hand-over | Done: references, `HLD`, `LLD`, `DECISIONS`, `BUILD_LOG`, `TEST_PLAN`, `RESULTS`, `MODEL_CARD`, `VIVA_GUIDE` and `README`. Open: `REPORT.md`, the clean-clone check, the audit, publishing the weights as release `v1.0`, and a full test run on the GPU |
+
 ## Global Constraints
 
 - Git author `Adwaith R Nair`, email `adwaith.r.nair189@gmail.com`, set in repo config. Commit messages are short and accurate, use conventional types (`feat:`, `fix:`, `docs:`, `test:`, `refactor:`, `perf:`, `build:`, `ci:`, `chore:`, `style:`), have a subject of 72 characters or fewer, and carry no co-author or tool-attribution lines. A `commit-msg` hook enforces this.
@@ -16,7 +26,7 @@
 - Never commit datasets or checkpoints. Weights go in a GitHub Release.
 - GPU memory 6 GB. Reference grid 256×256, AI grid 128×128, AI step 4 reference solver steps, ensemble of 5, public-track ensemble of 3.
 - Test splits are read only by final evaluation, and tuning uses validation only.
-- Every number in a document comes from a saved JSON result. Never type a result by hand.
+- Every number in a document comes from a saved JSON result. Never type a result by hand. **Stale in part:** the block in `RESULTS.md` is generated, while written text types its numbers with the source file named beside them (`DECISIONS.md` B57).
 - Code and experiment freeze: morning of 2026-11-04. Priority if time runs short: ensemble, main experiment, demo, public track, ablations.
 - Long jobs run under `scripts/long_job.sh`, which holds a sleep and lid inhibitor, refuses to start without mains power, and appends start and end times to `runs/jobs.log`.
 - Every changed decision goes in `docs/DECISIONS.md` and `docs/BUILD_LOG.md`.
@@ -63,6 +73,8 @@ results/                 JSON results and figures (tracked)
 data/ runs/ checkpoints/ (untracked)
 docs/                    DESIGN PLAN PRD HLD LLD BUILD_LOG DECISIONS TEST_PLAN RESULTS MODEL_CARD VIVA_GUIDE REPORT
 ```
+
+**Stale:** this layout is the plan's first version. The repo also has `src/sandeha/handoff_selection.py`, `src/sandeha/train/campaign.py`, `src/sandeha/well/{doubt,evaluate,train}.py`, `scripts/{select_handoff,train_ensemble,check_scenes,posthoc_analysis}.py`, `configs/{ensemble,ablation_no_divergence,ablation_no_pushforward}.yaml` and `docs/{PREREGISTRATION,REFERENCES}.md`. The demo's page lives in `src/sandeha/demo/static/`. `README.md` has the current map. `REPORT.md` isn't written.
 
 ---
 
@@ -259,7 +271,7 @@ class HybridSimulator:
 Hand-off: upsample the 128² state to 256², `project`, run `4 × handoff_frames` solver steps, emit each frame, downsample, then AI resumes. Solver and AI both step in the same physical time units. Timing calls `torch.cuda.synchronize()`.
 
 Selection on validation only, and recorded in `results/handoff_selection.json`, by the steps in `docs/PREREGISTRATION.md`:
-- `handoff_frames` from `{2, 5, 10}` and doubt aggregation from `{mean, p95, p99}`, by best rank correlation and error at equal budget.
+- `handoff_frames` from `{2, 5, 10}` and doubt aggregation from `{mean, p95, p99}`, by best rank correlation and error at equal budget. **Stale:** the steps in `PREREGISTRATION.md` replaced this summary, and they are what ran.
 - **Frozen threshold `tau`:** the value giving lowest primary error with solver share at or below 25% on validation.
 
 Hand-off follows the preregistration's hand-off rules: non-finite doubt triggers under any finite `tau`, non-finite output forces a hand-off under fixed, random and oracle policies too, the solver starts from the frame before, and `FixedSchedule` takes a per-scene offset. `Oracle` reads the error of the current frame only, and its `tau` is set per set by the preregistration's oracle rule.
@@ -301,7 +313,7 @@ Experiments, per design sections 6.1 to 6.4:
   - `test_experiments_use_val_unless_final`: without `--final`, only `val` is opened.
 - [ ] Implement, see tests pass, and commit.
 - [ ] Dry-run everything on validation with 3 scenes. Fix bugs, then run hand-off selection on validation and commit the selection.
-- [ ] Commit the code. Record the commit hash in `PREREGISTRATION.md`, then run once with `--final` under `long_job.sh`.
+- [ ] Commit the code. Record the commit hash in `PREREGISTRATION.md`, then run once with `--final` under `long_job.sh`. **Stale:** done. The recorded commit is `3a16f42`, and the results are stamped `31f57dc`, with the same code (`DECISIONS.md` B58).
 - [ ] **Any bug fix after `--final` runs gets logged in `BUILD_LOG.md`, with what changed and the before and after numbers.**
 - [ ] Generate figures and the numbers in `RESULTS.md`. Write the analysis, including all weak or failed hopes from the design's section 6.5. Commit and push.
 
@@ -366,4 +378,4 @@ Smoke and doubt side by side at equal size, with a very clear AI or PHYSICS indi
 - [ ] README: pitch, GIF, results, one-command setup and demo.
 - [ ] From a clean clone in a temp directory: install, download Release weights, run tests, start the demo. Fix what fails.
 - [ ] Audit: `git log --format='%an <%ae>%n%B'` has only the owner's identity and no attribution lines. A grep of tracked files finds no mention of the tooling used. Each number in `REPORT.md` and `README.md` appears in `results/`.
-- [ ] Upload weights to a GitHub Release. Commit and push.
+- [ ] Upload weights to a GitHub Release. Commit and push. The README's demo command expects release `v1.0`, file `sandeha-weights.tar.gz`, unpacked at the repo root.

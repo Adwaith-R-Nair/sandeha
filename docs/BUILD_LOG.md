@@ -921,3 +921,15 @@ Added the written analysis around the generated block in `docs/RESULTS.md`, stat
 - **Rerun the full test suite on the GPU** when public-track training ends. The last recorded full run is 321 passed at `dd78b8d`, and later commits added tests of their own. `src/sandeha/physics/solver.py` hasn't changed since before that run.
 - **Fill in the sections marked PUBLIC TRACK PENDING** from `results/exp_well.json` once it exists, in `RESULTS.md` and `MODEL_CARD.md`.
 - **Stale text outside this task:** `README.md` still says no results exist, the status line in `HLD.md` says no experiment has run, and `REPORT.md` isn't written.
+
+## 2026-11-04: README, viva guide and outcome records
+
+Rewrote `README.md` around the measured results, with the demo GIF, results tables, the one-command demo, a repo map and links to every document. Replaced every result marker in `docs/VIVA_GUIDE.md` with numbers from `results/`, and rewrote its pitch and demo script to lead with the failed hope. It gains eleven hard questions (H1 to H11) and a short section on presenting a mixed result. `docs/PRD.md` gains the outcome of each success measure. Stale lines in `docs/PLAN.md` and `docs/PREREGISTRATION.md` are marked, not rewritten, and no rule changed.
+
+**Noticed while writing:** the no-ensemble signal is scored on a single model's rollout against that model's error, and doubt on the ensemble's rollout against the ensemble's error (`src/sandeha/eval/experiments.py`). So those two Spearman figures aren't like for like. The viva guide and README say so.
+
+### Open items
+
+- **Publish release `v1.0`.** It wasn't published when this was written, so the README's demo command can't work until it is. The demo needs `runs/ensemble/seed_*/best.pt` and `data/normalizer.json` from the archive, at those paths.
+- **Fill in the PUBLIC TRACK PENDING sections** in `README.md`, `docs/VIVA_GUIDE.md` and `docs/PRD.md` as well as `RESULTS.md` and `MODEL_CARD.md`, once `results/exp_well.json` exists.
+- **Stale text outside this task:** the status line in `HLD.md` says no experiment has run, and `REPORT.md` isn't written. The README's document list needs a link once it is.
