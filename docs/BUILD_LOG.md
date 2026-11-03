@@ -881,3 +881,9 @@ Built `src/sandeha/demo/static/` and `tests/demo/test_ui.py`, added Playwright a
 ## 2026-11-03: Experiment progress fixes (stale rollouts, late ablations)
 
 Both were reproduced on tiny CPU data first. After a kept set's error was changed to 123.0, a new `Evaluation` under another commit returned 123.0 and stamped its results with the new commit. Adding ablation hashes to `checkpoint_sha256` raised "holds rollouts from other settings". Decision is B56. A set from other code now runs again and the old file is kept in `superseded/`. A late ablation joins the run, which `test_plain_run_reads_the_files_a_real_run_reads` checks through `scripts/run_experiments.py`. Kept sets are now a stamped object, not a bare list, and one in the old form runs again.
+
+## 2026-11-03: Rehearsal before the final run
+
+All four experiments ran on validation in 85 minutes with no crash (`results/val_rehearsal/`). The ablation section of the rehearsal has no reduced models, because the rehearsal's `--run-root` pointed away from `runs/ablation`. The final run uses the default.
+
+What it showed on validation at the frozen threshold, before any test split opened: doubt-based hand-off scored 0.2362, the fixed schedule 0.2451 (difference CI -0.0230 to 0.0049, not a win) and random 0.2520 (a win). Doubt-based hand-off took 97 ms per frame and the fixed schedule 72 ms, at about the same solver share. No code changed as a result of these numbers.

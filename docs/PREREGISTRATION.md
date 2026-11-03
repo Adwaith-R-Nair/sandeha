@@ -179,3 +179,7 @@ The result that answers the project's question is the primary metric of doubt-ba
 | 2026-11-03 | Stated the coarse contact rule for `test_c`, and added the oracle's rule. Travel became a distance, with its command, the controls' population and what happens with no control. The manifest's tracked copy and the normaliser's checksum are now checked | Second review, before any data or model existed: the oracle's `tau` and the contact count could have been chosen after being seen, and the travel rule couldn't be applied to a scene with no late obstacle. `docs/DECISIONS.md` B37 to B41 |
 | 2026-11-03 | Generation now enforces the controls' measuring. The spot-check and the rule's rendering have their commands. Stated the sides of `test_c`'s controls, and that a named scene is likely | Third review, before any data or model existed: the gate had nothing behind it, step 4's rendering had no tool, and the sides' effect wasn't stated. No threshold or factor changed. `docs/DECISIONS.md` B42 to B45 |
 | | Code commit for `--final`: to be recorded in Task 9 | |
+
+## Final run
+
+Code for the single `--final` run is at commit 3a16f42, recorded here before any test split opens.
