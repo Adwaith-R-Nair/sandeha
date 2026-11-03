@@ -409,6 +409,14 @@ def _summarise_timing(root: Path, extra: dict) -> dict:
     }
 
 
+def _remove_scene_files(root: Path) -> None:
+    """Remove what the finished files replace. Also run on a rerun, in case a crash came first."""
+    for split in SPLITS:
+        directory = root / split / "scenes"
+        if directory.exists():
+            shutil.rmtree(directory)
+
+
 def generate(
     config: dict,
     root: Path,
@@ -446,7 +454,8 @@ def generate(
 
     manifest_path = root / "manifest.json"
     if manifest_path.exists():
-        log(f"{manifest_path} exists, so this dataset is finished and nothing was changed")
+        log(f"{manifest_path} exists, so this dataset is finished and its files were not changed")
+        _remove_scene_files(root)
         return json.loads(manifest_path.read_text())
 
     _drop_torn_timing(root, log)
@@ -485,7 +494,6 @@ def generate(
         ),
     }
     write_json_atomic(manifest_path, manifest)
-    for split in SPLITS:
-        shutil.rmtree(root / split / "scenes")
+    _remove_scene_files(root)
     log(f"finished in {manifest['timing']['total_seconds']:.1f} s of work: {manifest_path}")
     return manifest

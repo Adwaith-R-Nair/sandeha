@@ -2,6 +2,7 @@
 
 import json
 import os
+import shutil
 import signal
 import subprocess
 import sys
@@ -293,6 +294,35 @@ def test_finished_data_is_never_regenerated(tmp_path, tiny_root):
     with pytest.raises(GenerationError):
         generate(tiny_config(frames=4), root, allow_dirty=True)
     assert (path.stat().st_mtime_ns, sha256_file(path)) == before
+
+
+def test_a_crash_before_the_scene_files_go_is_cleaned_up_by_a_rerun(tmp_path, monkeypatch):
+    """The manifest is written first, so a rerun must still finish the job it returns early from."""
+    root = tmp_path / "data"
+    config = tiny_config(frames=3)
+    real = shutil.rmtree
+    removed = []
+
+    def crash_on_second(path):
+        removed.append(path)
+        if len(removed) == 2:
+            raise OSError("the machine died here")
+        real(path)
+
+    monkeypatch.setattr(generate_module.shutil, "rmtree", crash_on_second)
+    with pytest.raises(OSError):
+        generate(config, root, allow_dirty=True)
+    monkeypatch.setattr(generate_module.shutil, "rmtree", real)
+    assert (root / "manifest.json").exists()
+    assert scene_files(root) != []
+    before = hashes(root)
+
+    written = []
+    manifest = generate(config, root, allow_dirty=True, on_scene=lambda *a: written.append(a))
+    assert scene_files(root) == []
+    assert written == []
+    assert hashes(root) == before
+    assert manifest == manifest_of(root)
 
 
 def test_scene_files_are_removed_once_finished(tiny_root):
