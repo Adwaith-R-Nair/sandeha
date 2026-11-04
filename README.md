@@ -4,6 +4,8 @@ Sandeha (Sanskrit for "doubt") is a neural 2D smoke simulator built to test one 
 
 ![The demo running the trained ensemble, with smoke on the left and doubt on the right](docs/assets/sandeha-demo.gif)
 
+[Watch the 3-minute walkthrough](docs/assets/sandeha-walkthrough.mp4): the live demo, then the two main result charts. It has no audio.
+
 The recording is of the real system, running live, and it includes physics-only mode. Two stills from it are `docs/assets/doubt-star.png` (by doubt, on a star) and `docs/assets/physics-mode.png` (physics only). Recording slows the demo: by-doubt and physics-only modes showed about 7 and 4 frames per second on screen (`docs/BUILD_LOG.md`). Those are readings with recording overhead, not benchmark figures. The demo is not evidence for any result below. The measured results are.
 
 ## Run the demo
